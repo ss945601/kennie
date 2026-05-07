@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   flame: ^1.5.0
+  audioplayers: ^6.6.0
+  nes_ui: 0.30.0
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +20,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/bgm/menu.mp3
+    - assets/images/menu_bg.jpg
+  # Optional: to use a bundled pixel font, add the TTF at
+  # assets/fonts/PressStart2P-Regular.ttf and uncomment the `fonts` section.
