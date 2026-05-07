@@ -1,48 +1,99 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 
 class AudioManager {
-  AudioPlayer? _bgmPlayer;
-  double _volume = 0.55;
-
   AudioManager._();
+
   static final AudioManager instance = AudioManager._();
 
+  AudioPlayer? _menuPlayer;
+  double _menuVolume = 0.55;
+  bool _menuBgmPlaying = false;
+  bool _audioDisabled = false;
+
+  static const Duration _audioOpTimeout = Duration(seconds: 3);
+
+  double get menuVolume => _menuVolume;
+
   Future<void> init() async {
-    _bgmPlayer ??= AudioPlayer();
-    await _bgmPlayer!.setReleaseMode(ReleaseMode.loop);
-    await _bgmPlayer!.setVolume(_volume);
+    if (_audioDisabled) {
+      return;
+    }
+
+    _menuPlayer ??= AudioPlayer(playerId: 'title_menu_bgm');
+
+    try {
+      await _menuPlayer!.setReleaseMode(ReleaseMode.loop).timeout(_audioOpTimeout);
+      await _menuPlayer!.setVolume(_menuVolume).timeout(_audioOpTimeout);
+    } on TimeoutException {
+      _disableAudio();
+    } catch (_) {
+      _disableAudio();
+    }
   }
 
   Future<void> playMenuBgm() async {
     await init();
+    if (_audioDisabled || _menuBgmPlaying || _menuPlayer == null) {
+      return;
+    }
+
     try {
-      await _bgmPlayer!.play(AssetSource('bgm/menu.mp3'));
-      await _bgmPlayer!.setVolume(_volume);
+      await _menuPlayer!.play(AssetSource('bgm/menu.mp3')).timeout(_audioOpTimeout);
+      _menuBgmPlaying = true;
+    } on TimeoutException {
+      _disableAudio();
     } catch (_) {
-      // best-effort: don't crash the app if audio fails
+      _disableAudio();
     }
   }
 
   Future<void> stopMenuBgm() async {
-    if (_bgmPlayer == null) return;
+    if (_audioDisabled || _menuPlayer == null || !_menuBgmPlaying) {
+      return;
+    }
+
     try {
-      await _bgmPlayer!.stop();
-    } catch (_) {}
+      await _menuPlayer!.stop().timeout(_audioOpTimeout);
+    } on TimeoutException {
+      _disableAudio();
+      return;
+    } catch (_) {
+      _disableAudio();
+      return;
+    }
+
+    _menuBgmPlaying = false;
   }
 
-  double get volume => _volume;
+  Future<void> setMenuVolume(double value) async {
+    _menuVolume = value.clamp(0.0, 1.0);
+    if (_audioDisabled || _menuPlayer == null) {
+      return;
+    }
 
-  Future<void> setVolume(double v) async {
-    _volume = v.clamp(0.0, 1.0);
-    if (_bgmPlayer != null) {
-      await _bgmPlayer!.setVolume(_volume);
+    try {
+      await _menuPlayer!.setVolume(_menuVolume).timeout(_audioOpTimeout);
+    } on TimeoutException {
+      _disableAudio();
+    } catch (_) {
+      _disableAudio();
     }
   }
 
   Future<void> dispose() async {
+    _menuBgmPlaying = false;
+
     try {
-      await _bgmPlayer?.dispose();
+      await _menuPlayer?.dispose().timeout(_audioOpTimeout);
     } catch (_) {}
-    _bgmPlayer = null;
+
+    _menuPlayer = null;
+  }
+
+  void _disableAudio() {
+    _audioDisabled = true;
+    _menuBgmPlaying = false;
   }
 }

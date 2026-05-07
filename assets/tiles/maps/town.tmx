@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="20" height="11" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="22">
+ <imagelayer id="1" name="Background">
+  <image source="../images/menu_bg.jpg" width="1024" height="1024"/>
+ </imagelayer>
+ <objectgroup id="2" name="SpawnPoints">
+  <object id="1" name="default" x="96" y="240" width="24" height="24"/>
+  <object id="2" name="from_house" x="520" y="224" width="24" height="24"/>
+ </objectgroup>
+ <objectgroup id="3" name="Collisions">
+  <object id="3" x="0" y="0" width="640" height="24"/>
+  <object id="4" x="0" y="328" width="640" height="24"/>
+  <object id="5" x="0" y="0" width="24" height="352"/>
+  <object id="6" x="616" y="0" width="24" height="352"/>
+  <object id="7" x="256" y="144" width="160" height="24"/>
+  <object id="8" x="256" y="144" width="24" height="96"/>
+ </objectgroup>
+ <objectgroup id="4" name="Teleports">
+  <object id="9" name="house#entry" x="544" y="176" width="40" height="56"/>
+ </objectgroup>
+ <objectgroup id="5" name="NPCs">
+  <object id="10" name="elder" x="192" y="208" width="20" height="28"/>
+ </objectgroup>
+ <objectgroup id="6" name="Chests">
+  <object id="11" name="starter_potion" x="448" y="248" width="20" height="20"/>
+ </objectgroup>
+ <objectgroup id="7" name="Props">
+  <object id="12" name="tree" x="332" y="136" width="48" height="72"/>
+  <object id="13" name="house" x="520" y="144" width="72" height="88"/>
+ </objectgroup>
+</map>
