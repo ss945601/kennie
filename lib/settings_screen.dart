@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'game.dart';
 import 'audio_manager.dart';
 
@@ -28,11 +29,30 @@ class _SettingsOverlayState extends State<SettingsOverlay> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const NesRunningText(text: '設定'),
+                  AutoSizeText(
+                    '設定',
+                    maxLines: 1,
+                    minFontSize: 10,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.white,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Expanded(child: NesRunningText(text:'BGM 音量')),
+                      Expanded(
+                        child: AutoSizeText(
+                          'BGM 音量',
+                          maxLines: 1,
+                          minFontSize: 10,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
+                                color: Colors.white,
+                                decoration: TextDecoration.none,
+                              ),
+                        ),
+                      ),
                       SizedBox(
                         width: 200,
                         child: Material(
@@ -54,12 +74,22 @@ class _SettingsOverlayState extends State<SettingsOverlay> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      NesButton.text(
+                      NesButton(
                         type: NesButtonType.primary,
-                        text: '關閉',
+                        buttonWidth: 120,
                         onPressed: () {
                           widget.game.overlays.remove('Settings');
                         },
+                        child: AutoSizeText(
+                          '關閉',
+                          maxLines: 1,
+                          minFontSize: 10,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
+                                color: Colors.white,
+                                decoration: TextDecoration.none,
+                              ),
+                        ),
                       ),
                     ],
                   ),

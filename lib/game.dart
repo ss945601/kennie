@@ -1,6 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'audio_manager.dart';
 
 class KennieGame extends FlameGame {
@@ -27,11 +28,23 @@ class KennieGame extends FlameGame {
       overlays.remove('MainMenu');
       AudioManager.instance.stopMenuBgm();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('載入已保存遊戲...')),
+        SnackBar(
+          content: AutoSizeText(
+            '載入已保存遊戲...',
+            maxLines: 1,
+            minFontSize: 10,
+          ),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('目前沒有可繼續的進度。')),
+        SnackBar(
+          content: AutoSizeText(
+            '目前沒有可繼續的進度。',
+            maxLines: 1,
+            minFontSize: 10,
+          ),
+        ),
       );
     }
   }
