@@ -34,7 +34,7 @@ class _SettingsOverlayState extends State<SettingsOverlay> {
                     maxLines: 1,
                     minFontSize: 10,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.white,
+                      color: Colors.black,
                       decoration: TextDecoration.none,
                     ),
                   ),
@@ -48,7 +48,7 @@ class _SettingsOverlayState extends State<SettingsOverlay> {
                           minFontSize: 10,
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(
-                                color: Colors.white,
+                                color: Colors.black,
                                 decoration: TextDecoration.none,
                               ),
                         ),
@@ -86,7 +86,7 @@ class _SettingsOverlayState extends State<SettingsOverlay> {
                           minFontSize: 10,
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(
-                                color: Colors.white,
+                                color: Colors.black,
                                 decoration: TextDecoration.none,
                               ),
                         ),

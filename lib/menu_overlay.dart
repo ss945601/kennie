@@ -55,13 +55,8 @@ class MainMenuOverlay extends StatelessWidget {
                                         .textTheme
                                         .bodyLarge
                                         ?.copyWith(
-                                          color: const Color.fromARGB(
-                                            255,
-                                            231,
-                                            234,
-                                            180,
-                                          ),
-                                          fontSize: 40 * titleScale,
+                                          color: const Color.fromARGB(255, 224, 229, 238),
+                                          fontSize: 46 * titleScale,
                                           letterSpacing: 1.5,
                                           decoration: TextDecoration.none,
                                         ),
@@ -72,7 +67,7 @@ class MainMenuOverlay extends StatelessWidget {
                                         .textTheme
                                         .bodyLarge
                                         ?.copyWith(
-                                          color: Colors.white,
+                                          color: const Color.fromARGB(255, 224, 229, 238),
                                           fontSize: 28 * titleScale,
                                           letterSpacing: 1.5,
                                           decoration: TextDecoration.none,
@@ -98,6 +93,7 @@ class MainMenuOverlay extends StatelessWidget {
                       Spacer(),
                       NesContainer(
                         padding: const EdgeInsets.all(8),
+                        width: 300,
                         backgroundColor: Colors.transparent,
                         child: Column(
                           children: [
