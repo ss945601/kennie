@@ -1,11 +1,9 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'audio_manager.dart';
 
 class KennieGame extends FlameGame {
-  final AudioPlayer _menuBgmPlayer = AudioPlayer();
-  bool _isMenuBgmPlaying = false;
   bool hasSavedGame = false;
 
   @override
@@ -14,36 +12,20 @@ class KennieGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    await playMenuBgm();
-  }
-
-  Future<void> playMenuBgm() async {
-    if (_isMenuBgmPlaying) {
-      return;
-    }
-    _isMenuBgmPlaying = true;
-    await _menuBgmPlayer.setReleaseMode(ReleaseMode.loop);
-    await _menuBgmPlayer.play(AssetSource('bgm/menu.mp3'), volume: 0.55);
-  }
-
-  Future<void> stopMenuBgm() async {
-    if (!_isMenuBgmPlaying) {
-      return;
-    }
-    _isMenuBgmPlaying = false;
-    await _menuBgmPlayer.stop();
+    await AudioManager.instance.init();
+    await AudioManager.instance.playMenuBgm();
   }
 
   void startGame() {
     hasSavedGame = true;
     overlays.remove('MainMenu');
-    stopMenuBgm();
+    AudioManager.instance.stopMenuBgm();
   }
 
   void continueGame(BuildContext context) {
     if (hasSavedGame) {
       overlays.remove('MainMenu');
-      stopMenuBgm();
+      AudioManager.instance.stopMenuBgm();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('載入已保存遊戲...')),
       );
@@ -55,21 +37,8 @@ class KennieGame extends FlameGame {
   }
 
   void openSettings(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('設定'),
-          content: const Text('遊戲音量、畫面與操作設定將在此顯示。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('關閉'),
-            ),
-          ],
-        );
-      },
-    );
+    // Use overlays so settings UI is handled in its own file
+    overlays.add('Settings');
   }
 
   void exitGame() {

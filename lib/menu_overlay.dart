@@ -24,10 +24,7 @@ class MainMenuOverlay extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(
-          'assets/images/menu_bg.jpg',
-          fit: BoxFit.cover,
-        ),
+        Image.asset('assets/images/menu_bg.jpg', fit: BoxFit.cover),
         Container(
           color: const Color.fromRGBO(0, 0, 0, 0.65),
           child: SafeArea(
@@ -35,23 +32,48 @@ class MainMenuOverlay extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth:500, maxHeight: MediaQuery.of(context).size.height * 0.8),
+                  constraints: BoxConstraints(
+                    maxWidth: 500,
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Spacer(),
                       Expanded(
-                        child: Text(
-                          'Kennie の 大冒險',
-                          style: const TextStyle(
-                            // Using monospace fallback so app builds without bundled font
-                            fontFamily: 'monospace',
-                            color: Colors.white,
-                            fontSize: 50,
-                            letterSpacing: 1.5,
-                            decoration: TextDecoration.none,
-                          ),
+                        child: RichText(
                           textAlign: TextAlign.center,
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Kennie',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: const Color.fromARGB(255, 231, 234, 180),
+                                      fontSize: 40,
+                                      letterSpacing: 1.5,
+                                      decoration: TextDecoration.none,
+                                    ),
+                              ),
+                              TextSpan(
+                                text: 'の大冒險',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      letterSpacing: 1.5,
+                                      decoration: TextDecoration.none,
+                                    ),
+                              ),
+                            ],
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  letterSpacing: 1.5,
+                                  decoration: TextDecoration.none,
+                                ),
+                          ),
                         ),
                       ),
                       Spacer(),
@@ -64,15 +86,14 @@ class MainMenuOverlay extends StatelessWidget {
                               type: NesButtonType.success,
                               onPressed: onStartGame,
                               buttonWidth: double.infinity,
-                              child: const Text(
+                              child: Text(
                                 '開始遊戲',
-                                style: TextStyle(
-                                  fontFamily: 'PressStart2P',
-                                  fontFamilyFallback: ['monospace'],
-                                  decoration: TextDecoration.none,
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      decoration: TextDecoration.none,
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -80,15 +101,14 @@ class MainMenuOverlay extends StatelessWidget {
                               type: NesButtonType.primary,
                               onPressed: () => onContinueGame(context),
                               buttonWidth: double.infinity,
-                              child: const Text(
+                              child: Text(
                                 '繼續遊戲',
-                                style: TextStyle(
-                                  fontFamily: 'PressStart2P',
-                                  fontFamilyFallback: ['monospace'],
-                                  decoration: TextDecoration.none,
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      decoration: TextDecoration.none,
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -96,15 +116,14 @@ class MainMenuOverlay extends StatelessWidget {
                               type: NesButtonType.warning,
                               onPressed: () => onOpenSettings(context),
                               buttonWidth: double.infinity,
-                              child: const Text(
+                              child: Text(
                                 '設定',
-                                style: TextStyle(
-                                  fontFamily: 'PressStart2P',
-                                  fontFamilyFallback: ['monospace'],
-                                  decoration: TextDecoration.none,
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      decoration: TextDecoration.none,
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -112,15 +131,14 @@ class MainMenuOverlay extends StatelessWidget {
                               type: NesButtonType.error,
                               onPressed: onExitGame,
                               buttonWidth: double.infinity,
-                              child: const Text(
+                              child: Text(
                                 '離開',
-                                style: TextStyle(
-                                  fontFamily: 'PressStart2P',
-                                  fontFamilyFallback: ['monospace'],
-                                  decoration: TextDecoration.none,
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      decoration: TextDecoration.none,
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
                               ),
                             ),
                           ],
@@ -138,37 +156,4 @@ class MainMenuOverlay extends StatelessWidget {
   }
 }
 
-class _MenuButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  final bool accent;
-  final Color? accentColor;
-
-  const _MenuButton({
-    required this.label,
-    required this.onPressed, required this.accent, this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = accent ? (accentColor ?? const Color(0xFF4C8DFF)) : Colors.white24;
-    return SizedBox(
-      width: double.infinity,
-        child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bg,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        onPressed: onPressed,
-            child: Text(
-          label,
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white),
-        ),
-      ),
-    );
-  }
-}
+// removed unused _MenuButton in favor of `NesButton` components
