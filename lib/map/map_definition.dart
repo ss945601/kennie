@@ -186,6 +186,22 @@ const mapDefinitions = <String, MapDefinition>{
         y: 672,
         hiddenWhenFlag: 'beat_bat_01',
       ),
+      SceneEnemyDefinition(
+        id: 'slime_garden',
+        enemyId: 'slime',
+        label: '花圃史萊姆',
+        x: 464,
+        y: 704,
+        hiddenWhenFlag: 'beat_slime_02',
+      ),
+      SceneEnemyDefinition(
+        id: 'bat_roofline',
+        enemyId: 'bat',
+        label: '屋簷蝙蝠',
+        x: 944,
+        y: 240,
+        hiddenWhenFlag: 'beat_bat_02',
+      ),
     ],
     chests: [
       SceneChestDefinition(
@@ -257,6 +273,14 @@ const mapDefinitions = <String, MapDefinition>{
         x: 288,
         y: 128,
         hiddenWhenFlag: 'beat_goblin_chief',
+      ),
+      SceneEnemyDefinition(
+        id: 'goblin_watch',
+        enemyId: 'goblin',
+        label: '巡邏哥布林',
+        x: 352,
+        y: 224,
+        hiddenWhenFlag: 'beat_goblin_02',
       ),
     ],
     chests: [

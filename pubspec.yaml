@@ -33,5 +33,6 @@ flutter:
     - assets/images/npc/
     - assets/images/player/
     - assets/images/enemy/
+    - assets/images/tiled/punnyworld/
   # Optional: to use a bundled pixel font, add the TTF at
   # assets/fonts/PressStart2P-Regular.ttf and uncomment the `fonts` section.

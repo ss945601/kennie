@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';
+import '../components/effects/player_attack_effect.dart';
 import '../components/objects/chest_component.dart';
 import '../components/objects/interactable_entity.dart';
 import '../components/objects/teleport_component.dart';
@@ -25,6 +26,7 @@ class WorldMapManager extends Component {
   final Component _sceneRoot = Component();
   final List<Rect> _collisionRects = <Rect>[];
   final List<InteractableEntity> _interactables = <InteractableEntity>[];
+  final List<EnemyComponent> _enemies = <EnemyComponent>[];
   final List<TeleportComponent> _teleports = <TeleportComponent>[];
   final Map<String, Vector2> _spawnPoints = <String, Vector2>{};
 
@@ -49,6 +51,7 @@ class WorldMapManager extends Component {
     _sceneRoot.removeAll(_sceneRoot.children.toList());
     _collisionRects.clear();
     _interactables.clear();
+    _enemies.clear();
     _teleports.clear();
     _spawnPoints.clear();
     _teleportLatch = false;
@@ -106,6 +109,31 @@ class WorldMapManager extends Component {
     await candidates.first.interact();
   }
 
+  Future<void> playerAttack() async {
+    if (!player.tryAttack()) {
+      return;
+    }
+    await _sceneRoot.add(
+      PlayerAttackEffect(
+        facing: player.facing,
+        position: Vector2(player.attackHitbox.center.dx, player.attackHitbox.center.dy),
+      ),
+    );
+    final hitEnemies = _enemies.where((enemy) => enemy.bodyRect.overlaps(player.attackHitbox)).toList();
+    if (hitEnemies.isEmpty) {
+      controller.setHudMessage('你揮空了。');
+      return;
+    }
+
+    for (final enemy in hitEnemies) {
+      final damage = controller.rollPlayerDamage(enemy.definition.defense);
+      final defeated = await enemy.receiveDamage(damage);
+      if (!defeated) {
+        controller.setHudMessage('命中 ${enemy.definition.name}，造成 $damage 點傷害。');
+      }
+    }
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -143,6 +171,23 @@ class WorldMapManager extends Component {
     return true;
   }
 
+  bool _canEnemyMoveTo(Rect targetRect) {
+    if (targetRect.overlaps(player.bodyRect.inflate(6))) {
+      return false;
+    }
+    return canMoveTo(targetRect);
+  }
+
+  Future<void> _handleEnemyAttack(EnemyComponent enemy) async {
+    final damage = controller.rollEnemyDamage(enemy.definition);
+    final defeated = controller.applyPlayerDamage(damage, source: enemy.definition.name);
+    if (!defeated) {
+      return;
+    }
+    final safeSpawn = _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
+    player.snapTo(safeSpawn);
+  }
+
   Component _buildSceneBackdrop(MapDefinition definition) {
     final root = PositionComponent(priority: -1000);
     final backgroundColor = switch (definition.id) {
@@ -172,12 +217,23 @@ class WorldMapManager extends Component {
     final decorativeRects = <({Rect rect, Color color})>[
       (rect: const Rect.fromLTWH(0, 0, 1440, 192), color: const Color(0xFF183724)),
       (rect: const Rect.fromLTWH(0, 736, 1440, 224), color: const Color(0xFF21452B)),
+      (rect: const Rect.fromLTWH(160, 416, 1120, 144), color: const Color(0xFF6D5739)),
+      (rect: const Rect.fromLTWH(192, 448, 1056, 80), color: const Color(0xFF9A7C4D)),
+      (rect: const Rect.fromLTWH(224, 468, 992, 36), color: const Color(0xFFBEA06A)),
+      (rect: const Rect.fromLTWH(112, 600, 300, 80), color: const Color(0xFF1D4F69)),
+      (rect: const Rect.fromLTWH(96, 616, 332, 46), color: const Color(0xFF338AB2)),
       (rect: const Rect.fromLTWH(544, 224, 352, 448), color: const Color(0xFF8B6B3F)),
       (rect: const Rect.fromLTWH(576, 256, 288, 384), color: const Color(0xFFBDA06A)),
+      (rect: const Rect.fromLTWH(304, 248, 176, 152), color: const Color(0xFF6F5136)),
+      (rect: const Rect.fromLTWH(320, 264, 144, 120), color: const Color(0xFFC5A16D)),
+      (rect: const Rect.fromLTWH(912, 248, 176, 152), color: const Color(0xFF6F5136)),
+      (rect: const Rect.fromLTWH(928, 264, 144, 120), color: const Color(0xFFC5A16D)),
       (rect: const Rect.fromLTWH(160, 256, 160, 576), color: const Color(0xFF295E43)),
       (rect: const Rect.fromLTWH(1120, 224, 160, 608), color: const Color(0xFF295E43)),
       (rect: const Rect.fromLTWH(1040, 320, 160, 128), color: const Color(0xFF5D5C68)),
       (rect: const Rect.fromLTWH(1048, 328, 144, 112), color: const Color(0xFF928F9C)),
+      (rect: const Rect.fromLTWH(1088, 304, 64, 16), color: const Color(0xFFD9D4C7)),
+      (rect: const Rect.fromLTWH(1088, 432, 64, 16), color: const Color(0xFFD9D4C7)),
     ];
 
     for (final item in decorativeRects) {
@@ -199,16 +255,76 @@ class WorldMapManager extends Component {
         ),
       );
     }
+
+    for (var index = 0; index < 12; index++) {
+      root.add(
+        CircleComponent(
+          radius: 12 + (index % 2) * 4,
+          position: Vector2(260 + index * 76, 610 + (index.isEven ? 10 : -2)),
+          paint: Paint()..color = const Color(0xAA84B65B),
+        ),
+      );
+    }
+
+    for (var index = 0; index < 18; index++) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(236 + index * 48, 482 + (index.isEven ? -4 : 10)),
+          size: Vector2(18, 8),
+          paint: Paint()..color = const Color(0x80DCC6A4),
+        ),
+      );
+    }
+
+    for (var index = 0; index < 6; index++) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(360 + index * 118, 394),
+          size: Vector2(14, 54),
+          paint: Paint()..color = const Color(0xFF4B3423),
+        ),
+      );
+      root.add(
+        CircleComponent(
+          radius: 9,
+          position: Vector2(367 + index * 118, 386),
+          paint: Paint()..color = const Color(0xFFE0BF6A),
+        ),
+      );
+    }
+
+    final flowerColors = <Color>[
+      const Color(0xFFE76FAD),
+      const Color(0xFFF4D35E),
+      const Color(0xFF8FE388),
+      const Color(0xFF72DDF7),
+    ];
+    for (var index = 0; index < 28; index++) {
+      root.add(
+        CircleComponent(
+          radius: 4,
+          position: Vector2(204 + (index % 14) * 22, 690 + (index ~/ 14) * 18),
+          paint: Paint()..color = flowerColors[index % flowerColors.length],
+        ),
+      );
+    }
   }
 
   void _addRuinsBackdrop(PositionComponent root) {
     final decorativeRects = <({Rect rect, Color color})>[
+      (rect: const Rect.fromLTWH(16, 16, 448, 448), color: const Color(0xFF14141D)),
       (rect: const Rect.fromLTWH(32, 32, 416, 416), color: const Color(0xFF2A2A34)),
       (rect: const Rect.fromLTWH(64, 64, 352, 352), color: const Color(0xFF3A3A46)),
+      (rect: const Rect.fromLTWH(96, 336, 256, 48), color: const Color(0xFF716047)),
+      (rect: const Rect.fromLTWH(96, 344, 256, 24), color: const Color(0xFFA68F68)),
+      (rect: const Rect.fromLTWH(112, 112, 256, 32), color: const Color(0xFF5E5A67)),
       (rect: const Rect.fromLTWH(160, 256, 160, 32), color: const Color(0xFF78674E)),
       (rect: const Rect.fromLTWH(160, 288, 32, 96), color: const Color(0xFF78674E)),
       (rect: const Rect.fromLTWH(288, 288, 32, 96), color: const Color(0xFF78674E)),
       (rect: const Rect.fromLTWH(176, 96, 128, 64), color: const Color(0xFF8E7B57)),
+      (rect: const Rect.fromLTWH(96, 176, 48, 112), color: const Color(0xFF4A4A57)),
+      (rect: const Rect.fromLTWH(336, 176, 48, 112), color: const Color(0xFF4A4A57)),
+      (rect: const Rect.fromLTWH(208, 160, 64, 160), color: const Color(0x4035C2A1)),
     ];
 
     for (final item in decorativeRects) {
@@ -227,6 +343,60 @@ class WorldMapManager extends Component {
           position: Vector2(72 + index * 40, 80 + (index.isEven ? 8 : 0)),
           size: Vector2(16, 16),
           paint: Paint()..color = const Color(0xCC4A6A58),
+        ),
+      );
+    }
+
+    for (var index = 0; index < 5; index++) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(92 + index * 72, 140),
+          size: Vector2(22, 62),
+          paint: Paint()..color = const Color(0xFF86818E),
+        ),
+      );
+      root.add(
+        RectangleComponent(
+          position: Vector2(88 + index * 72, 132),
+          size: Vector2(30, 10),
+          paint: Paint()..color = const Color(0xFFB0A79A),
+        ),
+      );
+    }
+
+    for (var index = 0; index < 9; index++) {
+      root.add(
+        CircleComponent(
+          radius: 5 + (index % 3),
+          position: Vector2(84 + index * 38, 392 + (index.isEven ? 8 : -4)),
+          paint: Paint()..color = const Color(0xFF54515C),
+        ),
+      );
+    }
+
+    for (var index = 0; index < 14; index++) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(72 + (index % 7) * 46, 92 + (index ~/ 7) * 260),
+          size: Vector2(12, 20),
+          paint: Paint()..color = const Color(0x8048D9A8),
+        ),
+      );
+    }
+
+    for (var index = 0; index < 4; index++) {
+      root.add(
+        CircleComponent(
+          radius: 7,
+          position: Vector2(126 + index * 92, 326),
+          paint: Paint()..color = const Color(0xFFE1AA53),
+        ),
+      );
+      root.add(
+        CircleComponent(
+          radius: 3,
+          position: Vector2(126 + index * 92, 322),
+          paint: Paint()..color = const Color(0xFFFFF1B0),
         ),
       );
     }
@@ -273,16 +443,28 @@ class WorldMapManager extends Component {
       if (!_isVisible(showWhenFlag: enemyDef.showWhenFlag, hiddenWhenFlag: enemyDef.hiddenWhenFlag)) {
         continue;
       }
+      final enemyData = enemyCatalog[enemyDef.enemyId];
+      if (enemyData == null) {
+        continue;
+      }
       final enemy = EnemyComponent(
-        enemyId: enemyDef.enemyId,
-        interactionLabel: '挑戰 ${enemyDef.label}',
         position: Vector2(enemyDef.x, enemyDef.y),
-        size: Vector2(40, 48),
-        onInteract: () async {
-          controller.startBattle(enemyDef.enemyId);
+        size: enemyDef.enemyId == 'goblin_chief' ? Vector2(56, 64) : Vector2(40, 48),
+        definition: enemyData,
+        player: player,
+        canMoveTo: _canEnemyMoveTo,
+        onAttackPlayer: _handleEnemyAttack,
+        onDefeated: (enemy) async {
+          _enemies.remove(enemy);
+          controller.onEnemyDefeated(
+            enemy.definition,
+            defeatedFlag: enemyDef.hiddenWhenFlag,
+            messagePrefix: enemyDef.label,
+          );
+          enemy.removeFromParent();
         },
       );
-      _interactables.add(enemy);
+      _enemies.add(enemy);
       await _sceneRoot.add(enemy);
     }
   }
@@ -402,9 +584,15 @@ class WorldMapManager extends Component {
               speaker: '長老',
               text: '出發之前，要不要先來場模擬戰？',
               choices: [
-                DialogChoice(label: '好，開始吧', startBattleId: 'slime'),
+                DialogChoice(label: '好，說明一下', nextNodeId: 'training'),
                 DialogChoice(label: '先不用', nextNodeId: 'finish'),
               ],
+            ),
+            'training': const DialogNode(
+              id: 'training',
+              speaker: '長老',
+              text: '走到怪物附近時要立刻拉開位置，用 J 揮劍，別被主動怪包圍。',
+              nextNodeId: 'finish',
             ),
             'ready': const DialogNode(
               id: 'ready',
@@ -415,7 +603,7 @@ class WorldMapManager extends Component {
             'finish': const DialogNode(
               id: 'finish',
               speaker: '長老',
-              text: '記得按 Space 互動，Esc 可以打開選單。',
+              text: '記得按 J 攻擊、Space 互動，Esc 可以打開選單。',
             ),
           },
         );

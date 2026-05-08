@@ -20,6 +20,9 @@ class GameStateController extends ChangeNotifier {
   String currentSpawnId = 'village_square';
   double playerX = 608;
   double playerY = 544;
+  int level = 1;
+  int experience = 0;
+  int nextLevelExperience = 30;
   PlayerStats baseStats = const PlayerStats(
     maxHp: 64,
     hp: 64,
@@ -39,7 +42,7 @@ class GameStateController extends ChangeNotifier {
 
   DialogSession? activeDialog;
   BattleState? activeBattle;
-  String hudMessage = '方向鍵移動，Space 互動，Esc 開選單';
+  String hudMessage = '方向鍵移動，J 攻擊，Space 互動，Esc 開選單';
 
   Future<void> initialize() async {
     hasSaveFile = await _saveRepository.hasSave();
@@ -57,9 +60,9 @@ class GameStateController extends ChangeNotifier {
   }
 
   bool get isFieldInputLocked =>
-      showTitleMenu || isPauseMenuOpen || activeDialog != null || activeBattle != null || transitionOpacity > 0.05;
+      showTitleMenu || isPauseMenuOpen || activeDialog != null || transitionOpacity > 0.05;
 
-  bool get isOverlayBusy => activeDialog != null || activeBattle != null || isPauseMenuOpen;
+  bool get isOverlayBusy => activeDialog != null || isPauseMenuOpen;
 
   bool flag(String key) => storyFlags[key] ?? false;
 
@@ -82,6 +85,9 @@ class GameStateController extends ChangeNotifier {
     currentSpawnId = 'village_square';
     playerX = 608;
     playerY = 544;
+    level = 1;
+    experience = 0;
+    nextLevelExperience = 30;
     transitionOpacity = 0;
     storyFlags
       ..clear()
@@ -99,7 +105,7 @@ class GameStateController extends ChangeNotifier {
       ]);
     baseStats = const PlayerStats(maxHp: 64, hp: 64, attack: 12, defense: 6);
     equipment = const EquipmentLoadout(weaponId: 'bronze_sword', armorId: 'cloth_armor');
-    hudMessage = '新冒險開始！先去和長老聊聊吧。';
+    hudMessage = '新冒險開始！先去和長老聊聊吧，J 可以直接揮劍。';
     notifyListeners();
   }
 
@@ -124,6 +130,9 @@ class GameStateController extends ChangeNotifier {
       currentSpawnId: currentSpawnId,
       playerX: playerX,
       playerY: playerY,
+      level: level,
+      experience: experience,
+      nextLevelExperience: nextLevelExperience,
       storyFlags: Map<String, bool>.from(storyFlags),
       inventory: List<InventoryEntry>.from(inventory),
       equipment: equipment,
@@ -153,6 +162,9 @@ class GameStateController extends ChangeNotifier {
     currentSpawnId = snapshot.currentSpawnId;
     playerX = snapshot.playerX;
     playerY = snapshot.playerY;
+    level = snapshot.level;
+    experience = snapshot.experience;
+    nextLevelExperience = snapshot.nextLevelExperience;
     storyFlags
       ..clear()
       ..addAll(snapshot.storyFlags);
@@ -205,8 +217,11 @@ class GameStateController extends ChangeNotifier {
     isPauseMenuOpen = false;
     activeDialog = null;
     activeBattle = null;
+    level = 1;
+    experience = 0;
+    nextLevelExperience = 30;
     transitionOpacity = 0;
-    hudMessage = '方向鍵移動，Space 互動，Esc 開選單';
+    hudMessage = '方向鍵移動，J 攻擊，Space 互動，Esc 開選單';
     notifyListeners();
   }
 
@@ -217,6 +232,80 @@ class GameStateController extends ChangeNotifier {
     }
     activeDialog = DialogSession(tree: tree, currentNodeId: tree.startNodeId);
     _applyNodeSideEffects(startNode);
+    hudMessage = '方向鍵移動，J 攻擊，Space 互動，Esc 開選單';
+    notifyListeners();
+  }
+
+  int rollPlayerDamage(int enemyDefense) {
+    return clampDamage(effectiveStats.attack, enemyDefense, _random);
+  }
+
+  int rollEnemyDamage(EnemyDefinition enemy) {
+    return clampDamage(enemy.attack, effectiveStats.defense, _random);
+  }
+
+  bool applyPlayerDamage(int damage, {String? source}) {
+    final remainingHp = max(0, baseStats.hp - damage);
+    baseStats = baseStats.copyWith(hp: remainingHp);
+    if (remainingHp == 0) {
+      baseStats = baseStats.copyWith(hp: max(1, baseStats.maxHp ~/ 2));
+      hudMessage = '${source ?? '敵人'} 擊倒了你，你勉強撤回安全位置。';
+      notifyListeners();
+      return true;
+    }
+    hudMessage = '${source ?? '敵人'} 造成 $damage 點傷害。';
+    notifyListeners();
+    return false;
+  }
+
+  bool usePotionQuick() {
+    final potion = itemCatalog['potion'];
+    if (potion == null) {
+      return false;
+    }
+    if (!consumeItem('potion')) {
+      hudMessage = '沒有可用的治療藥水。';
+      notifyListeners();
+      return false;
+    }
+    baseStats = baseStats.copyWith(
+      hp: min(baseStats.maxHp, baseStats.hp + potion.healAmount),
+    );
+    hudMessage = '你使用了治療藥水，回復 ${potion.healAmount} HP。';
+    notifyListeners();
+    return true;
+  }
+
+  void onEnemyDefeated(EnemyDefinition enemy, {String? defeatedFlag, String? messagePrefix}) {
+    if (enemy.rewardItemId case final rewardItemId?) {
+      addItem(rewardItemId);
+    }
+    if (enemy.rewardFlag case final rewardFlag?) {
+      storyFlags[rewardFlag] = true;
+    }
+    if (defeatedFlag != null) {
+      storyFlags[defeatedFlag] = true;
+    }
+    gainExperience(enemy.experienceReward);
+    final prefix = messagePrefix == null ? '' : '$messagePrefix ';
+    hudMessage = '$prefix擊敗 ${enemy.name}，獲得 ${enemy.experienceReward} EXP。';
+    notifyListeners();
+  }
+
+  void gainExperience(int amount) {
+    experience += amount;
+    while (experience >= nextLevelExperience) {
+      experience -= nextLevelExperience;
+      level += 1;
+      nextLevelExperience = (nextLevelExperience * 1.35).round();
+      baseStats = baseStats.copyWith(
+        maxHp: baseStats.maxHp + 10,
+        hp: baseStats.maxHp + 10,
+        attack: baseStats.attack + 3,
+        defense: baseStats.defense + 2,
+      );
+      hudMessage = '升級！你已到達 Lv.$level。';
+    }
     notifyListeners();
   }
 

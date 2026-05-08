@@ -18,9 +18,12 @@ class PlayerComponent extends PositionComponent {
   PlayerComponent() : super(size: Vector2.all(48), anchor: Anchor.topLeft);
 
   final double moveSpeed = 120;
+  final double attackCooldown = 0.32;
   Vector2 movement = Vector2.zero();
   FacingDirection facing = FacingDirection.down;
   late final SpriteAnimationGroupComponent<_PlayerVisualState> _sprite;
+  double _attackCooldownRemaining = 0;
+  double _attackWindowRemaining = 0;
 
   dynamic get _game => findGame();
 
@@ -73,6 +76,33 @@ class PlayerComponent extends PositionComponent {
     }
   }
 
+  Rect get attackHitbox {
+    const distance = 28.0;
+    final body = bodyRect;
+    switch (facing) {
+      case FacingDirection.up:
+        return Rect.fromLTWH(body.left - 4, body.top - distance, body.width + 8, distance + 4);
+      case FacingDirection.down:
+        return Rect.fromLTWH(body.left - 4, body.bottom - 4, body.width + 8, distance + 4);
+      case FacingDirection.left:
+        return Rect.fromLTWH(body.left - distance, body.top - 2, distance + 4, body.height + 4);
+      case FacingDirection.right:
+        return Rect.fromLTWH(body.right - 4, body.top - 2, distance + 4, body.height + 4);
+    }
+  }
+
+  bool get isAttackActive => _attackWindowRemaining > 0;
+
+  bool tryAttack() {
+    if (_attackCooldownRemaining > 0 || _game.controller.isFieldInputLocked) {
+      return false;
+    }
+    movement = Vector2.zero();
+    _attackCooldownRemaining = attackCooldown;
+    _attackWindowRemaining = 0.12;
+    return true;
+  }
+
   void updateMovementFromKeys(
     Set<LogicalKeyboardKey> keysPressed, {
     required bool inputLocked,
@@ -106,6 +136,12 @@ class PlayerComponent extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
+    if (_attackCooldownRemaining > 0) {
+      _attackCooldownRemaining = (_attackCooldownRemaining - dt).clamp(0, attackCooldown);
+    }
+    if (_attackWindowRemaining > 0) {
+      _attackWindowRemaining = (_attackWindowRemaining - dt).clamp(0, 0.12);
+    }
     _syncAnimation();
     if (_game.controller.isFieldInputLocked || movement == Vector2.zero()) {
       _syncPriority();

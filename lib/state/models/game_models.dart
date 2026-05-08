@@ -37,6 +37,13 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     maxHp: 28,
     attack: 8,
     defense: 2,
+    moveSpeed: 42,
+    aggroRange: 84,
+    attackRange: 28,
+    attackCooldown: 1.4,
+    experienceReward: 16,
+    aggressive: false,
+    spriteSheet: 'npc/critter_run_right.png',
     rewardItemId: 'potion',
     rewardFlag: 'beat_slime_01',
   ),
@@ -46,6 +53,13 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     maxHp: 22,
     attack: 10,
     defense: 1,
+    moveSpeed: 72,
+    aggroRange: 168,
+    attackRange: 30,
+    attackCooldown: 1.1,
+    experienceReward: 18,
+    aggressive: true,
+    spriteSheet: 'npc/critter_run_right.png',
     rewardFlag: 'beat_bat_01',
   ),
   'goblin': EnemyDefinition(
@@ -54,6 +68,13 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     maxHp: 42,
     attack: 14,
     defense: 4,
+    moveSpeed: 80,
+    aggroRange: 176,
+    attackRange: 34,
+    attackCooldown: 1.0,
+    experienceReward: 24,
+    aggressive: true,
+    spriteSheet: 'enemy/goblin_run_right.png',
     rewardItemId: 'potion',
     rewardFlag: 'beat_goblin_01',
   ),
@@ -63,6 +84,13 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     maxHp: 58,
     attack: 18,
     defense: 6,
+    moveSpeed: 88,
+    aggroRange: 196,
+    attackRange: 36,
+    attackCooldown: 0.9,
+    experienceReward: 40,
+    aggressive: true,
+    spriteSheet: 'enemy/goblin_run_right.png',
     rewardItemId: 'potion',
     rewardFlag: 'beat_goblin_chief',
   ),
@@ -199,6 +227,9 @@ class GameSnapshot {
     required this.currentSpawnId,
     required this.playerX,
     required this.playerY,
+    required this.level,
+    required this.experience,
+    required this.nextLevelExperience,
     required this.storyFlags,
     required this.inventory,
     required this.equipment,
@@ -209,6 +240,9 @@ class GameSnapshot {
   final String currentSpawnId;
   final double playerX;
   final double playerY;
+  final int level;
+  final int experience;
+  final int nextLevelExperience;
   final Map<String, bool> storyFlags;
   final List<InventoryEntry> inventory;
   final EquipmentLoadout equipment;
@@ -219,6 +253,9 @@ class GameSnapshot {
         'currentSpawnId': currentSpawnId,
         'playerX': playerX,
         'playerY': playerY,
+        'level': level,
+        'experience': experience,
+        'nextLevelExperience': nextLevelExperience,
         'storyFlags': storyFlags,
         'inventory': inventory.map((entry) => entry.toJson()).toList(),
         'equipment': equipment.toJson(),
@@ -231,6 +268,9 @@ class GameSnapshot {
       currentSpawnId: json['currentSpawnId'] as String,
       playerX: (json['playerX'] as num).toDouble(),
       playerY: (json['playerY'] as num).toDouble(),
+        level: (json['level'] as num?)?.toInt() ?? 1,
+        experience: (json['experience'] as num?)?.toInt() ?? 0,
+        nextLevelExperience: (json['nextLevelExperience'] as num?)?.toInt() ?? 30,
       storyFlags: Map<String, bool>.from(json['storyFlags'] as Map),
       inventory: (json['inventory'] as List<dynamic>)
           .map((entry) => InventoryEntry.fromJson(entry as Map<String, dynamic>))
@@ -311,6 +351,13 @@ class EnemyDefinition {
     required this.maxHp,
     required this.attack,
     required this.defense,
+    required this.moveSpeed,
+    required this.aggroRange,
+    required this.attackRange,
+    required this.attackCooldown,
+    required this.experienceReward,
+    required this.aggressive,
+    required this.spriteSheet,
     this.rewardItemId,
     this.rewardFlag,
   });
@@ -320,6 +367,13 @@ class EnemyDefinition {
   final int maxHp;
   final int attack;
   final int defense;
+  final double moveSpeed;
+  final double aggroRange;
+  final double attackRange;
+  final double attackCooldown;
+  final int experienceReward;
+  final bool aggressive;
+  final String spriteSheet;
   final String? rewardItemId;
   final String? rewardFlag;
 }

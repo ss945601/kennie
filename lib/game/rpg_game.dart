@@ -111,6 +111,8 @@ class RpgGame extends BonfireWithCollision {
 
   Future<void> handleInteraction() => worldMapManager.interactInFrontOfPlayer();
 
+  Future<void> handleAttack() => worldMapManager.playerAttack();
+
   Future<void> _runTransition(Future<void> Function() action) async {
     _isChangingScene = true;
     controller.setTransitionOpacity(1);
@@ -132,7 +134,7 @@ class RpgGame extends BonfireWithCollision {
     _setOverlay(OverlayIds.hud, !controller.showTitleMenu);
     _setOverlay(OverlayIds.pauseMenu, controller.isPauseMenuOpen);
     _setOverlay(OverlayIds.dialog, controller.activeDialog != null);
-    _setOverlay(OverlayIds.battle, controller.activeBattle != null);
+    _setOverlay(OverlayIds.battle, false);
   }
 
   void _setOverlay(String id, bool visible) {
@@ -162,6 +164,18 @@ class RpgGame extends BonfireWithCollision {
 
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       controller.togglePauseMenu();
+      return KeyEventResult.handled;
+    }
+
+    if ((event.logicalKey == LogicalKeyboardKey.keyJ || event.logicalKey == LogicalKeyboardKey.enter) &&
+        !controller.isFieldInputLocked) {
+      unawaited(handleAttack());
+      return KeyEventResult.handled;
+    }
+
+    if ((event.logicalKey == LogicalKeyboardKey.keyH || event.logicalKey == LogicalKeyboardKey.digit1) &&
+        !controller.isFieldInputLocked) {
+      controller.usePotionQuick();
       return KeyEventResult.handled;
     }
 
