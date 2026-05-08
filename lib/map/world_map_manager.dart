@@ -1,9 +1,6 @@
-import 'dart:ui';
-
 import 'package:flame/components.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/material.dart';
-import 'package:tiled/tiled.dart';
 
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';

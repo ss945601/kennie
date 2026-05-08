@@ -1,13 +1,10 @@
-import 'dart:ui';
-
 import 'package:flame/components.dart';
-import 'package:flame/input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state/models/game_models.dart';
 
-class PlayerComponent extends RectangleComponent with KeyboardHandler {
+class PlayerComponent extends RectangleComponent {
   PlayerComponent()
       : super(
           size: Vector2(20, 28),
@@ -46,11 +43,13 @@ class PlayerComponent extends RectangleComponent with KeyboardHandler {
     }
   }
 
-  @override
-  bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    if (_game.controller.isFieldInputLocked) {
+  void updateMovementFromKeys(
+    Set<LogicalKeyboardKey> keysPressed, {
+    required bool inputLocked,
+  }) {
+    if (inputLocked) {
       movement = Vector2.zero();
-      return false;
+      return;
     }
 
     final horizontal = (keysPressed.contains(LogicalKeyboardKey.arrowRight) ? 1 : 0) -
@@ -72,7 +71,6 @@ class PlayerComponent extends RectangleComponent with KeyboardHandler {
     } else if (vertical > 0) {
       facing = FacingDirection.down;
     }
-    return true;
   }
 
   @override

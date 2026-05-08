@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flame/components.dart';
-import 'package:flame/events.dart';
-import 'package:flame/game.dart';
+import 'package:bonfire/bonfire.dart';
+import 'package:bonfire/base/bonfire_with_collision.dart';
+import 'package:bonfire/map/empty_map.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -12,11 +12,17 @@ import '../map/world_map_manager.dart';
 import '../state/game_state_controller.dart';
 import 'overlay_ids.dart';
 
-class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
-  RpgGame({required this.controller});
+class RpgGame extends BonfireWithCollision {
+  RpgGame({
+    required super.context,
+    required this.controller,
+  }) : super(
+          configDefault: BonfireCollisionConfigDefault(),
+          map: EmptyWorldMap(size: Vector2.all(1)),
+        );
 
   final GameStateController controller;
-  late final PlayerComponent player;
+  late final PlayerComponent hero;
   late final WorldMapManager worldMapManager;
   bool _isChangingScene = false;
 
@@ -24,13 +30,13 @@ class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
   Future<void> onLoad() async {
     await super.onLoad();
     unawaited(AudioManager.instance.init());
-    player = PlayerComponent();
+    hero = PlayerComponent();
     worldMapManager = WorldMapManager(
-      player: player,
+      player: hero,
       controller: controller,
       onTeleportTriggered: requestTeleport,
     );
-    await add(worldMapManager);
+    await world.add(worldMapManager);
     controller.addListener(_syncOverlays);
     camera.viewfinder.zoom = 1.2;
     await controller.initialize();
@@ -51,7 +57,7 @@ class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
         controller.currentMapId,
         spawnId: controller.currentSpawnId,
       );
-      camera.follow(player);
+      camera.follow(hero);
     });
   }
 
@@ -66,7 +72,7 @@ class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
         spawnId: controller.currentSpawnId,
         explicitPlayerPosition: Vector2(controller.playerX, controller.playerY),
       );
-      camera.follow(player);
+      camera.follow(hero);
     });
     return true;
   }
@@ -84,7 +90,7 @@ class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
         spawnId: controller.currentSpawnId,
         explicitPlayerPosition: Vector2(controller.playerX, controller.playerY),
       );
-      camera.follow(player);
+      camera.follow(hero);
     });
   }
 
@@ -99,7 +105,7 @@ class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
     controller.setHudMessage('場景切換中...');
     await _runTransition(() async {
       await worldMapManager.loadMap(mapId, spawnId: spawnId);
-      camera.follow(player);
+      camera.follow(hero);
     });
   }
 
@@ -141,17 +147,25 @@ class RpgGame extends FlameGame with HasKeyboardHandlerComponents {
 
   @override
   KeyEventResult onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    if (hero.isMounted) {
+      hero.updateMovementFromKeys(
+        keysPressed,
+        inputLocked: controller.isFieldInputLocked,
+      );
+    }
+
     final componentResult = super.onKeyEvent(event, keysPressed);
-    if (event is! KeyDownEvent) {
+    final isPressedEvent = event is KeyDownEvent || event is KeyRepeatEvent;
+    if (!isPressedEvent) {
       return componentResult;
     }
 
-    if (keysPressed.contains(LogicalKeyboardKey.escape)) {
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
       controller.togglePauseMenu();
       return KeyEventResult.handled;
     }
 
-    if (keysPressed.contains(LogicalKeyboardKey.space) && !controller.isFieldInputLocked) {
+    if (event.logicalKey == LogicalKeyboardKey.space && !controller.isFieldInputLocked) {
       unawaited(handleInteraction());
       return KeyEventResult.handled;
     }

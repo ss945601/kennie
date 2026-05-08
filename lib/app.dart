@@ -1,4 +1,4 @@
-import 'package:flame/game.dart';
+import 'package:bonfire/base/listener_game_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -23,13 +23,21 @@ class KennieApp extends StatefulWidget {
 
 class _KennieAppState extends State<KennieApp> {
   late final GameStateController _controller;
-  late final RpgGame _game;
+  RpgGame? _game;
 
   @override
   void initState() {
     super.initState();
     _controller = GameStateController(saveRepository: SaveRepository());
-    _game = RpgGame(controller: _controller);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _game ??= RpgGame(
+      context: context,
+      controller: _controller,
+    );
   }
 
   @override
@@ -71,8 +79,8 @@ class _KennieAppState extends State<KennieApp> {
         debugShowCheckedModeBanner: false,
         theme: theme,
         home: Scaffold(
-          body: GameWidget<RpgGame>(
-            game: _game,
+          body: ListenerGameWidget<RpgGame>(
+            game: _game!,
             overlayBuilderMap: {
               OverlayIds.titleMenu: (context, game) => TitleMenuOverlay(game: game),
               OverlayIds.titleSettings: (context, game) => TitleSettingsOverlay(game: game),
