@@ -1,27 +1,47 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/material.dart';
 
 import '../objects/interactable_entity.dart';
 
-class NpcComponent extends RectangleComponent implements InteractableEntity {
+class NpcComponent extends PositionComponent implements InteractableEntity {
   NpcComponent({
     required super.position,
     required super.size,
     required this.npcId,
+    required this.interactionLabel,
+    required this.spritePath,
     required this.onInteract,
-  }) : super(
-          paint: Paint()..color = Colors.greenAccent,
-        ) {
+    this.idleFrames = 2,
+  }) {
     _syncPriority();
   }
 
   final String npcId;
+  @override
+  final String interactionLabel;
+  final String spritePath;
+  final int idleFrames;
   final Future<void> Function() onInteract;
 
   @override
-  String get interactionLabel => '與 $npcId 對話';
+  Future<void> onLoad() async {
+    await super.onLoad();
+    await add(
+      SpriteAnimationComponent(
+        animation: await SpriteAnimation.load(
+          spritePath,
+          SpriteAnimationData.sequenced(
+            amount: idleFrames,
+            stepTime: 0.18,
+            textureSize: Vector2.all(16),
+          ),
+        ),
+        size: size,
+        anchor: Anchor.topLeft,
+      ),
+    );
+  }
 
   @override
   Rect get interactionBounds => toAbsoluteRect();

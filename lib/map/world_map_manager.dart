@@ -1,12 +1,11 @@
 import 'package:flame/components.dart';
-import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/material.dart';
 
+import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';
 import '../components/objects/chest_component.dart';
 import '../components/objects/interactable_entity.dart';
-import '../components/objects/prop_component.dart';
 import '../components/objects/teleport_component.dart';
 import '../state/game_state_controller.dart';
 import '../state/models/game_models.dart';
@@ -54,22 +53,22 @@ class WorldMapManager extends Component {
     _spawnPoints.clear();
     _teleportLatch = false;
 
-    final tiled = await TiledComponent.load(definition.tmxAsset, Vector2.all(32));
-    await _sceneRoot.add(tiled);
-
-    final tiledMap = tiled.tileMap;
-    final map = tiledMap.map;
     mapPixelSize = Vector2(
-      map.width * map.tileWidth.toDouble(),
-      map.height * map.tileHeight.toDouble(),
+      definition.sceneSize.x,
+      definition.sceneSize.y,
     );
+    await _sceneRoot.add(_buildSceneBackdrop(definition));
 
-    _readSpawnPoints(tiledMap);
-    _readCollisionLayer(tiledMap);
-    await _readProps(tiledMap);
-    await _readTeleports(tiledMap);
-    await _readNpcs(tiledMap);
-    await _readChests(tiledMap);
+    _spawnPoints.addAll(
+      definition.spawnPoints.map(
+        (key, value) => MapEntry(key, Vector2(value.x, value.y)),
+      ),
+    );
+    _collisionRects.addAll(definition.blockingRects);
+    await _loadTeleports(definition);
+    await _loadNpcs(definition);
+    await _loadEnemies(definition);
+    await _loadChests(definition);
 
     if (player.parent != null) {
       player.removeFromParent();
@@ -80,6 +79,7 @@ class WorldMapManager extends Component {
     final spawnPosition = explicitPlayerPosition ?? _spawnPoints[desiredSpawnId] ?? Vector2(64, 64);
     player.snapTo(spawnPosition);
     controller.setMapContext(mapId: mapId, spawnId: desiredSpawnId);
+    controller.setHudMessage(definition.hudMessage);
   }
 
   bool canMoveTo(Rect targetRect) {
@@ -109,82 +109,158 @@ class WorldMapManager extends Component {
   @override
   void update(double dt) {
     super.update(dt);
-    final currentTeleport = _teleports.firstWhere(
+    final activeTeleport = _teleports.where(
       (teleport) => teleport.toAbsoluteRect().overlaps(player.bodyRect),
-      orElse: () => TeleportComponent(
-        position: Vector2.all(-9999),
-        size: Vector2.zero(),
-        targetMapId: '',
-        targetSpawnId: '',
+    );
+    final currentTeleport = activeTeleport.isEmpty ? null : activeTeleport.first;
+    if (currentTeleport == null) {
+      _teleportLatch = false;
+      return;
+    }
+    if (_teleportLatch || controller.isOverlayBusy) {
+      return;
+    }
+
+    if (currentTeleport.requiredStoryFlag case final requiredFlag?) {
+      if (!controller.flag(requiredFlag)) {
+        _teleportLatch = true;
+        controller.setHudMessage(currentTeleport.blockedMessage ?? '前方似乎被封住了。');
+        return;
+      }
+    }
+
+    _teleportLatch = true;
+    onTeleportTriggered(currentTeleport.targetMapId, currentTeleport.targetSpawnId);
+  }
+
+  bool _isVisible({String? showWhenFlag, String? hiddenWhenFlag}) {
+    if (showWhenFlag != null && !controller.flag(showWhenFlag)) {
+      return false;
+    }
+    if (hiddenWhenFlag != null && controller.flag(hiddenWhenFlag)) {
+      return false;
+    }
+    return true;
+  }
+
+  Component _buildSceneBackdrop(MapDefinition definition) {
+    final root = PositionComponent(priority: -1000);
+    final backgroundColor = switch (definition.id) {
+      'ruins' => const Color(0xFF1A1A24),
+      _ => const Color(0xFF1C2F20),
+    };
+
+    root.add(
+      RectangleComponent(
+        position: Vector2.zero(),
+        size: mapPixelSize,
+        paint: Paint()..color = backgroundColor,
       ),
     );
-    final hasTeleport = currentTeleport.targetMapId.isNotEmpty;
-    if (hasTeleport && !_teleportLatch && !controller.isOverlayBusy) {
-      _teleportLatch = true;
-      onTeleportTriggered(currentTeleport.targetMapId, currentTeleport.targetSpawnId);
-    } else if (!hasTeleport) {
-      _teleportLatch = false;
+
+    switch (definition.id) {
+      case 'village':
+        _addVillageBackdrop(root);
+      case 'ruins':
+        _addRuinsBackdrop(root);
+    }
+
+    return root;
+  }
+
+  void _addVillageBackdrop(PositionComponent root) {
+    final decorativeRects = <({Rect rect, Color color})>[
+      (rect: const Rect.fromLTWH(0, 0, 1440, 192), color: const Color(0xFF183724)),
+      (rect: const Rect.fromLTWH(0, 736, 1440, 224), color: const Color(0xFF21452B)),
+      (rect: const Rect.fromLTWH(544, 224, 352, 448), color: const Color(0xFF8B6B3F)),
+      (rect: const Rect.fromLTWH(576, 256, 288, 384), color: const Color(0xFFBDA06A)),
+      (rect: const Rect.fromLTWH(160, 256, 160, 576), color: const Color(0xFF295E43)),
+      (rect: const Rect.fromLTWH(1120, 224, 160, 608), color: const Color(0xFF295E43)),
+      (rect: const Rect.fromLTWH(1040, 320, 160, 128), color: const Color(0xFF5D5C68)),
+      (rect: const Rect.fromLTWH(1048, 328, 144, 112), color: const Color(0xFF928F9C)),
+    ];
+
+    for (final item in decorativeRects) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(item.rect.left, item.rect.top),
+          size: Vector2(item.rect.width, item.rect.height),
+          paint: Paint()..color = item.color,
+        ),
+      );
+    }
+
+    for (var index = 0; index < 10; index++) {
+      root.add(
+        CircleComponent(
+          radius: 18 + (index % 3) * 6,
+          position: Vector2(210 + index * 96, 150 + (index.isEven ? 24 : 0)),
+          paint: Paint()..color = const Color(0xAA6D8F3B),
+        ),
+      );
     }
   }
 
-  void _readSpawnPoints(RenderableTiledMap tiledMap) {
-    final layer = tiledMap.getLayer<ObjectGroup>('SpawnPoints');
-    for (final object in layer?.objects ?? const <TiledObject>[]) {
-      _spawnPoints[object.name] = Vector2(object.x, object.y);
+  void _addRuinsBackdrop(PositionComponent root) {
+    final decorativeRects = <({Rect rect, Color color})>[
+      (rect: const Rect.fromLTWH(32, 32, 416, 416), color: const Color(0xFF2A2A34)),
+      (rect: const Rect.fromLTWH(64, 64, 352, 352), color: const Color(0xFF3A3A46)),
+      (rect: const Rect.fromLTWH(160, 256, 160, 32), color: const Color(0xFF78674E)),
+      (rect: const Rect.fromLTWH(160, 288, 32, 96), color: const Color(0xFF78674E)),
+      (rect: const Rect.fromLTWH(288, 288, 32, 96), color: const Color(0xFF78674E)),
+      (rect: const Rect.fromLTWH(176, 96, 128, 64), color: const Color(0xFF8E7B57)),
+    ];
+
+    for (final item in decorativeRects) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(item.rect.left, item.rect.top),
+          size: Vector2(item.rect.width, item.rect.height),
+          paint: Paint()..color = item.color,
+        ),
+      );
+    }
+
+    for (var index = 0; index < 8; index++) {
+      root.add(
+        RectangleComponent(
+          position: Vector2(72 + index * 40, 80 + (index.isEven ? 8 : 0)),
+          size: Vector2(16, 16),
+          paint: Paint()..color = const Color(0xCC4A6A58),
+        ),
+      );
     }
   }
 
-  void _readCollisionLayer(RenderableTiledMap tiledMap) {
-    final layer = tiledMap.getLayer<ObjectGroup>('Collisions');
-    for (final object in layer?.objects ?? const <TiledObject>[]) {
-      _collisionRects.add(Rect.fromLTWH(object.x, object.y, object.width, object.height));
-    }
-  }
-
-  Future<void> _readTeleports(RenderableTiledMap tiledMap) async {
-    final layer = tiledMap.getLayer<ObjectGroup>('Teleports');
-    for (final object in layer?.objects ?? const <TiledObject>[]) {
-      final parts = object.name.split('#');
-      if (parts.length != 2) {
-        continue;
-      }
+  Future<void> _loadTeleports(MapDefinition definition) async {
+    for (final teleportDef in definition.teleports) {
       final teleport = TeleportComponent(
-        position: Vector2(object.x, object.y),
-        size: Vector2(object.width, object.height),
-        targetMapId: parts.first,
-        targetSpawnId: parts.last,
+        position: Vector2(teleportDef.rect.left, teleportDef.rect.top),
+        size: Vector2(teleportDef.rect.width, teleportDef.rect.height),
+        targetMapId: teleportDef.targetMapId,
+        targetSpawnId: teleportDef.targetSpawnId,
+        requiredStoryFlag: teleportDef.requiredFlag,
+        blockedMessage: teleportDef.blockedMessage,
       );
       _teleports.add(teleport);
       await _sceneRoot.add(teleport);
     }
   }
 
-  Future<void> _readProps(RenderableTiledMap tiledMap) async {
-    final layer = tiledMap.getLayer<ObjectGroup>('Props');
-    for (final object in layer?.objects ?? const <TiledObject>[]) {
-      final color = object.name.contains('tree')
-          ? const Color(0xFF6D8F3B)
-          : object.name.contains('house')
-              ? const Color(0xFF8C5A3C)
-              : const Color(0xFF86765F);
-      final prop = PropComponent(
-        position: Vector2(object.x, object.y),
-        size: Vector2(object.width, object.height),
-        color: color,
-      );
-      await _sceneRoot.add(prop);
-    }
-  }
-
-  Future<void> _readNpcs(RenderableTiledMap tiledMap) async {
-    final layer = tiledMap.getLayer<ObjectGroup>('NPCs');
-    for (final object in layer?.objects ?? const <TiledObject>[]) {
+  Future<void> _loadNpcs(MapDefinition definition) async {
+    for (final npcDef in definition.npcs) {
+      if (!_isVisible(showWhenFlag: npcDef.showWhenFlag, hiddenWhenFlag: npcDef.hiddenWhenFlag)) {
+        continue;
+      }
       final npc = NpcComponent(
-        npcId: object.name,
-        position: Vector2(object.x, object.y),
-        size: Vector2(object.width, object.height),
+        npcId: npcDef.id,
+        interactionLabel: '與 ${npcDef.label} 對話',
+        spritePath: npcDef.spritePath,
+        idleFrames: npcDef.idleFrames,
+        position: Vector2(npcDef.x, npcDef.y),
+        size: Vector2(40, 48),
         onInteract: () async {
-          controller.startDialog(_buildNpcDialog(object.name));
+          controller.startDialog(_buildNpcDialog(npcDef.id));
         },
       );
       _interactables.add(npc);
@@ -192,29 +268,49 @@ class WorldMapManager extends Component {
     }
   }
 
-  Future<void> _readChests(RenderableTiledMap tiledMap) async {
-    final layer = tiledMap.getLayer<ObjectGroup>('Chests');
-    for (final object in layer?.objects ?? const <TiledObject>[]) {
-      final chest = ChestComponent(
-        chestId: object.name,
-        position: Vector2(object.x, object.y),
-        size: Vector2(object.width, object.height),
+  Future<void> _loadEnemies(MapDefinition definition) async {
+    for (final enemyDef in definition.enemies) {
+      if (!_isVisible(showWhenFlag: enemyDef.showWhenFlag, hiddenWhenFlag: enemyDef.hiddenWhenFlag)) {
+        continue;
+      }
+      final enemy = EnemyComponent(
+        enemyId: enemyDef.enemyId,
+        interactionLabel: '挑戰 ${enemyDef.label}',
+        position: Vector2(enemyDef.x, enemyDef.y),
+        size: Vector2(40, 48),
         onInteract: () async {
-          final flagKey = 'chest_${object.name}_opened';
+          controller.startBattle(enemyDef.enemyId);
+        },
+      );
+      _interactables.add(enemy);
+      await _sceneRoot.add(enemy);
+    }
+  }
+
+  Future<void> _loadChests(MapDefinition definition) async {
+    for (final chestDef in definition.chests) {
+      if (!_isVisible(showWhenFlag: chestDef.showWhenFlag, hiddenWhenFlag: chestDef.hiddenWhenFlag)) {
+        continue;
+      }
+      final chest = ChestComponent(
+        chestId: chestDef.id,
+        position: Vector2(chestDef.x, chestDef.y),
+        size: Vector2(28, 28),
+        onInteract: () async {
+          final flagKey = 'chest_${chestDef.id}_opened';
           if (controller.flag(flagKey)) {
             controller.setHudMessage('這個寶箱已經空了。');
             return;
           }
-          final itemId = object.name == 'old_key' ? 'old_key' : 'potion';
           controller.setFlag(flagKey, true);
-          if (itemId == 'old_key') {
-            controller.setFlag('has_key_01', true);
+          if (chestDef.giveFlag case final giveFlag?) {
+            controller.setFlag(giveFlag, true);
           }
-          controller.addItem(itemId);
-          controller.setHudMessage('獲得 ${itemCatalog[itemId]?.name ?? itemId}。');
+          controller.addItem(chestDef.itemId);
+          controller.setHudMessage('獲得 ${itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId}。');
         },
       );
-      if (controller.flag('chest_${object.name}_opened')) {
+      if (controller.flag('chest_${chestDef.id}_opened')) {
         chest.opened = true;
         chest.paint.color = Colors.orange.withValues(alpha: 0.5);
       }
@@ -226,54 +322,100 @@ class WorldMapManager extends Component {
   DialogTree _buildNpcDialog(String npcId) {
     switch (npcId) {
       case 'merchant':
-        return const DialogTree(
+        final claimedGift = controller.flag('merchant_gift_claimed');
+        return DialogTree(
           startNodeId: 'start',
           nodes: {
             'start': DialogNode(
               id: 'start',
               speaker: '商人',
-              text: '旅人啊，想買東西還是試試身手？',
-              choices: [
-                DialogChoice(label: '拿一瓶藥水', giveItemId: 'potion', nextNodeId: 'gift'),
-                DialogChoice(label: '來場戰鬥練習', startBattleId: 'bat'),
-                DialogChoice(label: '先不用了'),
-              ],
+              text: claimedGift
+                  ? '補給都準備好了，遺跡裡看到哥布林就別猶豫。'
+                  : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。',
+              choices: claimedGift
+                  ? const [
+                      DialogChoice(label: '知道了'),
+                    ]
+                  : const [
+                      DialogChoice(
+                        label: '收下藥水',
+                        giveItemId: 'potion',
+                        setFlagKey: 'merchant_gift_claimed',
+                        nextNodeId: 'gift',
+                      ),
+                      DialogChoice(label: '先逛逛'),
+                    ],
             ),
-            'gift': DialogNode(
+            'gift': const DialogNode(
               id: 'gift',
               speaker: '商人',
-              text: '這瓶送你，別說我不照顧新手。',
+              text: '好好保管。東邊的石門一開，村子就靠你了。',
+            ),
+          },
+        );
+      case 'scout':
+        return DialogTree(
+          startNodeId: 'start',
+          nodes: {
+            'start': DialogNode(
+              id: 'start',
+              speaker: '斥候',
+              text: controller.flag('has_key_01')
+                  ? '你找到鑰匙了。石門就在我身後，裡頭有哥布林守衛。'
+                  : '河道北側的補給箱裡藏著舊鑰匙。先拿到它，才能開遺跡大門。',
+            ),
+          },
+        );
+      case 'ruin_spirit':
+        return DialogTree(
+          startNodeId: 'start',
+          nodes: {
+            'start': DialogNode(
+              id: 'start',
+              speaker: '遺跡精靈',
+              text: controller.flag('beat_goblin_chief')
+                  ? '封印已經穩定，帶著戰利品回村吧。'
+                  : '守門者就在前方。擊退它，這片土地才會安寧。',
             ),
           },
         );
       case 'elder':
       default:
         final hasKey = controller.flag('has_key_01');
+        final defeatedChief = controller.flag('beat_goblin_chief');
         return DialogTree(
           startNodeId: 'start',
           nodes: {
             'start': DialogNode(
               id: 'start',
-              speaker: '村長',
-              text: hasKey
-                  ? '你已經拿到舊鑰匙了。準備好就進屋內深處吧。'
-                  : '村外的老屋裡藏著一把舊鑰匙，把它帶回來。',
-              nextNodeId: hasKey ? 'finish' : 'choice',
+              speaker: '長老',
+              text: defeatedChief
+                  ? '村子得救了。這片遺跡終於安靜下來。'
+                  : hasKey
+                      ? '很好，舊鑰匙在你手上了。往東邊石門去，結束這場騷動。'
+                      : '先去商人那裡拿補給，再去東邊找到舊鑰匙。別空手闖遺跡。',
+              nextNodeId: defeatedChief ? 'finish' : (hasKey ? 'ready' : 'choice'),
               setFlagOnEnter: 'intro_seen',
             ),
             'choice': const DialogNode(
               id: 'choice',
-              speaker: '村長',
+              speaker: '長老',
               text: '出發之前，要不要先來場模擬戰？',
               choices: [
                 DialogChoice(label: '好，開始吧', startBattleId: 'slime'),
                 DialogChoice(label: '先不用', nextNodeId: 'finish'),
               ],
             ),
+            'ready': const DialogNode(
+              id: 'ready',
+              speaker: '長老',
+              text: '蝙蝠與哥布林都怕你手上的勇氣。去吧，我會在村裡等你。',
+              nextNodeId: 'finish',
+            ),
             'finish': const DialogNode(
               id: 'finish',
-              speaker: '村長',
-              text: '記得按 Space 與人交談，Esc 可以開啟選單。',
+              speaker: '長老',
+              text: '記得按 Space 互動，Esc 可以打開選單。',
             ),
           },
         );

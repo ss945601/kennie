@@ -46,6 +46,25 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     maxHp: 22,
     attack: 10,
     defense: 1,
+    rewardFlag: 'beat_bat_01',
+  ),
+  'goblin': EnemyDefinition(
+    id: 'goblin',
+    name: '林地哥布林',
+    maxHp: 42,
+    attack: 14,
+    defense: 4,
+    rewardItemId: 'potion',
+    rewardFlag: 'beat_goblin_01',
+  ),
+  'goblin_chief': EnemyDefinition(
+    id: 'goblin_chief',
+    name: '遺跡守衛',
+    maxHp: 58,
+    attack: 18,
+    defense: 6,
+    rewardItemId: 'potion',
+    rewardFlag: 'beat_goblin_chief',
   ),
 };
 

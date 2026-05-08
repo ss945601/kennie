@@ -1,45 +1,75 @@
 import 'package:flame/components.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state/models/game_models.dart';
 
-class PlayerComponent extends RectangleComponent {
-  PlayerComponent()
-      : super(
-          size: Vector2(20, 28),
-          anchor: Anchor.topLeft,
-          paint: Paint()..color = Colors.blueAccent,
-        ) {
-    _syncPriority();
-  }
+enum _PlayerVisualState {
+  idleUp,
+  idleDown,
+  idleLeft,
+  idleRight,
+  runUp,
+  runDown,
+  runLeft,
+  runRight,
+}
+
+class PlayerComponent extends PositionComponent {
+  PlayerComponent() : super(size: Vector2.all(48), anchor: Anchor.topLeft);
 
   final double moveSpeed = 120;
   Vector2 movement = Vector2.zero();
   FacingDirection facing = FacingDirection.down;
+  late final SpriteAnimationGroupComponent<_PlayerVisualState> _sprite;
 
   dynamic get _game => findGame();
 
-  static const spriteAnimationPaths = <FacingDirection, String>{
-    FacingDirection.up: 'assets/sprites/player_up.png',
-    FacingDirection.down: 'assets/sprites/player_down.png',
-    FacingDirection.left: 'assets/sprites/player_left.png',
-    FacingDirection.right: 'assets/sprites/player_right.png',
-  };
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    _sprite = SpriteAnimationGroupComponent<_PlayerVisualState>(
+      size: size,
+      anchor: Anchor.topLeft,
+      animations: {
+        _PlayerVisualState.idleUp: await _loadAnimation('player/knight_idle.png'),
+        _PlayerVisualState.idleDown: await _loadAnimation('player/knight_idle.png'),
+        _PlayerVisualState.idleLeft: await _loadAnimation('player/knight_idle_left.png'),
+        _PlayerVisualState.idleRight: await _loadAnimation('player/knight_idle.png'),
+        _PlayerVisualState.runUp: await _loadAnimation('player/knight_run.png'),
+        _PlayerVisualState.runDown: await _loadAnimation('player/knight_run.png'),
+        _PlayerVisualState.runLeft: await _loadAnimation('player/knight_run_left.png'),
+        _PlayerVisualState.runRight: await _loadAnimation('player/knight_run.png'),
+      },
+      current: _PlayerVisualState.idleDown,
+    );
+    await add(_sprite);
+  }
 
-  Rect get bodyRect => Rect.fromLTWH(position.x, position.y, size.x, size.y);
+  Future<SpriteAnimation> _loadAnimation(String path) {
+    return SpriteAnimation.load(
+      path,
+      SpriteAnimationData.sequenced(
+        amount: 6,
+        stepTime: 0.1,
+        textureSize: Vector2.all(16),
+      ),
+    );
+  }
+
+  Rect get bodyRect => Rect.fromLTWH(position.x + 12, position.y + 18, 24, 24);
 
   Rect get interactionProbe {
     const distance = 16.0;
+    final body = bodyRect;
     switch (facing) {
       case FacingDirection.up:
-        return Rect.fromLTWH(position.x, position.y - distance, size.x, distance + 8);
+        return Rect.fromLTWH(body.left, body.top - distance, body.width, distance + 8);
       case FacingDirection.down:
-        return Rect.fromLTWH(position.x, position.y + size.y - 8, size.x, distance + 8);
+        return Rect.fromLTWH(body.left, body.bottom - 8, body.width, distance + 8);
       case FacingDirection.left:
-        return Rect.fromLTWH(position.x - distance, position.y + 4, distance + 8, size.y - 8);
+        return Rect.fromLTWH(body.left - distance, body.top + 4, distance + 8, body.height - 8);
       case FacingDirection.right:
-        return Rect.fromLTWH(position.x + size.x - 8, position.y + 4, distance + 8, size.y - 8);
+        return Rect.fromLTWH(body.right - 8, body.top + 4, distance + 8, body.height - 8);
     }
   }
 
@@ -76,6 +106,7 @@ class PlayerComponent extends RectangleComponent {
   @override
   void update(double dt) {
     super.update(dt);
+    _syncAnimation();
     if (_game.controller.isFieldInputLocked || movement == Vector2.zero()) {
       _syncPriority();
       return;
@@ -96,7 +127,24 @@ class PlayerComponent extends RectangleComponent {
     _syncPriority();
   }
 
+  void _syncAnimation() {
+    if (!_sprite.isMounted) {
+      return;
+    }
+    final running = movement != Vector2.zero() && !_game.controller.isFieldInputLocked;
+    _sprite.current = switch ((running, facing)) {
+      (false, FacingDirection.up) => _PlayerVisualState.idleUp,
+      (false, FacingDirection.down) => _PlayerVisualState.idleDown,
+      (false, FacingDirection.left) => _PlayerVisualState.idleLeft,
+      (false, FacingDirection.right) => _PlayerVisualState.idleRight,
+      (true, FacingDirection.up) => _PlayerVisualState.runUp,
+      (true, FacingDirection.down) => _PlayerVisualState.runDown,
+      (true, FacingDirection.left) => _PlayerVisualState.runLeft,
+      (true, FacingDirection.right) => _PlayerVisualState.runRight,
+    };
+  }
+
   void _syncPriority() {
-    priority = (position.y + size.y).round();
+    priority = (bodyRect.bottom).round();
   }
 }

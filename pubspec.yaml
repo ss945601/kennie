@@ -29,6 +29,9 @@ flutter:
   assets:
     - assets/bgm/
     - assets/images/
-    - assets/tiles/maps/
+    - assets/images/solaria/
+    - assets/images/npc/
+    - assets/images/player/
+    - assets/images/enemy/
   # Optional: to use a bundled pixel font, add the TTF at
   # assets/fonts/PressStart2P-Regular.ttf and uncomment the `fonts` section.

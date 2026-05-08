@@ -16,10 +16,10 @@ class GameStateController extends ChangeNotifier {
   bool hasSaveFile = false;
   bool isPauseMenuOpen = false;
   double transitionOpacity = 1;
-  String currentMapId = 'town';
-  String currentSpawnId = 'default';
-  double playerX = 96;
-  double playerY = 240;
+  String currentMapId = 'village';
+  String currentSpawnId = 'village_square';
+  double playerX = 608;
+  double playerY = 544;
   PlayerStats baseStats = const PlayerStats(
     maxHp: 64,
     hp: 64,
@@ -78,14 +78,18 @@ class GameStateController extends ChangeNotifier {
     isPauseMenuOpen = false;
     activeDialog = null;
     activeBattle = null;
-    currentMapId = 'town';
-    currentSpawnId = 'default';
-    playerX = 96;
-    playerY = 240;
+    currentMapId = 'village';
+    currentSpawnId = 'village_square';
+    playerX = 608;
+    playerY = 544;
     transitionOpacity = 0;
     storyFlags
       ..clear()
-      ..addAll({'intro_seen': false, 'has_key_01': false});
+      ..addAll({
+        'intro_seen': false,
+        'has_key_01': false,
+        'merchant_gift_claimed': false,
+      });
     inventory
       ..clear()
       ..addAll(const [
@@ -95,7 +99,7 @@ class GameStateController extends ChangeNotifier {
       ]);
     baseStats = const PlayerStats(maxHp: 64, hp: 64, attack: 12, defense: 6);
     equipment = const EquipmentLoadout(weaponId: 'bronze_sword', armorId: 'cloth_armor');
-    hudMessage = '新冒險開始！去和村長聊聊吧。';
+    hudMessage = '新冒險開始！先去和長老聊聊吧。';
     notifyListeners();
   }
 
