@@ -113,6 +113,28 @@ class RpgGame extends BonfireWithCollision {
 
   Future<void> handleAttack() => worldMapManager.playerAttack();
 
+  void updateTouchMovement(Vector2 movement) {
+    if (!hero.isMounted) {
+      return;
+    }
+    hero.updateMovementFromVector(
+      movement,
+      inputLocked: controller.isFieldInputLocked,
+    );
+  }
+
+  void stopTouchMovement() {
+    updateTouchMovement(Vector2.zero());
+  }
+
+  void handleQuickPotion() {
+    controller.usePotionQuick();
+  }
+
+  void handlePauseToggle() {
+    controller.togglePauseMenu();
+  }
+
   Future<void> _runTransition(Future<void> Function() action) async {
     _isChangingScene = true;
     controller.setTransitionOpacity(1);

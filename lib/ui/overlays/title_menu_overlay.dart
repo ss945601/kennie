@@ -4,6 +4,7 @@ import 'package:nes_ui/nes_ui.dart';
 
 import '../../game/overlay_ids.dart';
 import '../../game/rpg_game.dart';
+import '../responsive_overlay.dart';
 
 class TitleMenuOverlay extends StatelessWidget {
   const TitleMenuOverlay({
@@ -15,6 +16,9 @@ class TitleMenuOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ui = OverlayUiConfig.of(context);
+    final size = ui.size;
+    final buttonFontSize = ui.font(14, compactValue: 10.5);
     return Theme(
       data: flutterNesTheme(),
       child: Stack(
@@ -23,24 +27,30 @@ class TitleMenuOverlay extends StatelessWidget {
           Image.asset('assets/images/menu_bg.jpg', fit: BoxFit.cover),
           Container(
             color: const Color.fromRGBO(0, 0, 0, 0.3),
-            height: MediaQuery.of(context).size.height,
+            height: size.height,
             child: SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: ui.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                  compactVertical: 12,
+                  compactHorizontal: 12,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.9,
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      maxWidth: ui.compact ? size.width * 0.96 : 760,
+                      maxHeight: ui.compact ? size.height * 0.58 : size.height * 0.72,
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.max,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SizedBox(height: 48),
-                        Expanded(
+                        SizedBox(height: ui.value(36, compactValue: 8)),
+                        SizedBox(
+                          height: ui.value(132, compactValue: 64),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              final titleScale = (constraints.maxWidth / 500).clamp(0.8, 2.0);
+                              final titleScale = (constraints.maxWidth / (ui.compact ? 520 : 680)).clamp(0.52, 1.4);
                               return AutoSizeText.rich(
                                 TextSpan(
                                   children: [
@@ -48,8 +58,8 @@ class TitleMenuOverlay extends StatelessWidget {
                                       text: 'Kennie',
                                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                             color: const Color.fromARGB(255, 224, 229, 238),
-                                            fontSize: 46 * titleScale,
-                                            letterSpacing: 1.5,
+                                          fontSize: 38 * titleScale,
+                                          letterSpacing: ui.compact ? 0.5 : 1.2,
                                             decoration: TextDecoration.none,
                                           ),
                                     ),
@@ -57,104 +67,113 @@ class TitleMenuOverlay extends StatelessWidget {
                                       text: 'の大冒險',
                                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                             color: const Color.fromARGB(255, 224, 229, 238),
-                                            fontSize: 28 * titleScale,
-                                            letterSpacing: 1.5,
+                                          fontSize: 22 * titleScale,
+                                          letterSpacing: ui.compact ? 0.4 : 1,
                                             decoration: TextDecoration.none,
                                           ),
                                     ),
                                   ],
                                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                         color: Colors.white,
-                                        fontSize: 32 * titleScale,
-                                        letterSpacing: 1.5,
+                                        fontSize: 24 * titleScale,
+                                        letterSpacing: ui.compact ? 0.4 : 1,
                                         decoration: TextDecoration.none,
                                       ),
                                 ),
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
-                                minFontSize: 12,
+                                minFontSize: 10,
                                 stepGranularity: 1,
                               );
                             },
                           ),
                         ),
+                        Spacer(),
                         NesContainer(
-                          padding: const EdgeInsets.all(8),
-                          width: 300,
+                          padding: ui.all(8, compactValue: 5),
+                          width: ui.compact ? size.width * 0.92 : 700,
                           backgroundColor: Colors.transparent,
-                          child: Column(
+                          child: Row(
                             children: [
-                              NesButton(
-                                type: NesButtonType.success,
-                                onPressed: game.startNewGame,
-                                buttonWidth: double.infinity,
-                                child: AutoSizeText(
-                                  '開始遊戲',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        decoration: TextDecoration.none,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                  maxLines: 1,
-                                  minFontSize: 10,
+                              Expanded(
+                                child: NesButton(
+                                  type: NesButtonType.success,
+                                  onPressed: game.startNewGame,
+                                  buttonWidth: double.infinity,
+                                  child: AutoSizeText(
+                                    '開始遊戲',
+                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          decoration: TextDecoration.none,
+                                          color: Colors.white,
+                                          fontSize: buttonFontSize,
+                                        ),
+                                    maxLines: 1,
+                                    minFontSize: 8,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              NesButton(
-                                type: NesButtonType.primary,
-                                onPressed: () async {
-                                  final loaded = await game.continueGame();
-                                  if (!context.mounted || loaded) {
-                                    return;
-                                  }
-                                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                                    const SnackBar(content: Text('目前沒有可繼續的進度。')),
-                                  );
-                                },
-                                buttonWidth: double.infinity,
-                                child: AutoSizeText(
-                                  '繼續遊戲',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        decoration: TextDecoration.none,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                  maxLines: 1,
-                                  minFontSize: 10,
+                              SizedBox(width: ui.value(8, compactValue: 4)),
+                              Expanded(
+                                child: NesButton(
+                                  type: NesButtonType.primary,
+                                  onPressed: () async {
+                                    final loaded = await game.continueGame();
+                                    if (!context.mounted || loaded) {
+                                      return;
+                                    }
+                                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                      const SnackBar(content: Text('目前沒有可繼續的進度。')),
+                                    );
+                                  },
+                                  buttonWidth: double.infinity,
+                                  child: AutoSizeText(
+                                    '繼續遊戲',
+                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          decoration: TextDecoration.none,
+                                          color: Colors.white,
+                                          fontSize: buttonFontSize,
+                                        ),
+                                    maxLines: 1,
+                                    minFontSize: 8,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              NesButton(
-                                type: NesButtonType.warning,
-                                onPressed: () {
-                                  game.overlays.add(OverlayIds.titleSettings);
-                                },
-                                buttonWidth: double.infinity,
-                                child: AutoSizeText(
-                                  '設定',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        decoration: TextDecoration.none,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                  maxLines: 1,
-                                  minFontSize: 10,
+                              SizedBox(width: ui.value(8, compactValue: 4)),
+                              Expanded(
+                                child: NesButton(
+                                  type: NesButtonType.warning,
+                                  onPressed: () {
+                                    game.overlays.add(OverlayIds.titleSettings);
+                                  },
+                                  buttonWidth: double.infinity,
+                                  child: AutoSizeText(
+                                    '設定',
+                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          decoration: TextDecoration.none,
+                                          color: Colors.white,
+                                          fontSize: buttonFontSize,
+                                        ),
+                                    maxLines: 1,
+                                    minFontSize: 8,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              NesButton(
-                                type: NesButtonType.error,
-                                onPressed: game.exitGame,
-                                buttonWidth: double.infinity,
-                                child: AutoSizeText(
-                                  '離開',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        decoration: TextDecoration.none,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                  maxLines: 1,
-                                  minFontSize: 10,
+                              SizedBox(width: ui.value(8, compactValue: 4)),
+                              Expanded(
+                                child: NesButton(
+                                  type: NesButtonType.error,
+                                  onPressed: game.exitGame,
+                                  buttonWidth: double.infinity,
+                                  child: AutoSizeText(
+                                    '離開',
+                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          decoration: TextDecoration.none,
+                                          color: Colors.white,
+                                          fontSize: buttonFontSize,
+                                        ),
+                                    maxLines: 1,
+                                    minFontSize: 8,
+                                  ),
                                 ),
                               ),
                             ],

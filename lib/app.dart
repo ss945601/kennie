@@ -84,7 +84,7 @@ class _KennieAppState extends State<KennieApp> {
             overlayBuilderMap: {
               OverlayIds.titleMenu: (context, game) => TitleMenuOverlay(game: game),
               OverlayIds.titleSettings: (context, game) => TitleSettingsOverlay(game: game),
-              OverlayIds.hud: (context, game) => const HudOverlay(),
+              OverlayIds.hud: (context, game) => HudOverlay(game: game),
               OverlayIds.dialog: (context, game) => const DialogOverlay(),
               OverlayIds.pauseMenu: (context, game) => PauseMenuOverlay(game: game),
               OverlayIds.battle: (context, game) => const BattleOverlay(),

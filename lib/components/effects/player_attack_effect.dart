@@ -29,6 +29,7 @@ class PlayerAttackEffect extends PositionComponent {
             loop: false,
           ),
         ),
+        position: size / 2,
         size: size,
         anchor: Anchor.center,
       ),

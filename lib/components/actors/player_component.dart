@@ -61,6 +61,19 @@ class PlayerComponent extends PositionComponent {
 
   Rect get bodyRect => Rect.fromLTWH(position.x + 12, position.y + 18, 24, 24);
 
+  Vector2 get visualCenter => Vector2(position.x + size.x / 2, position.y + size.y / 2);
+
+  Vector2 get attackEffectOrigin {
+    final center = bodyRect.center;
+    const distance = 10.0;
+    return switch (facing) {
+      FacingDirection.up => Vector2(center.dx, center.dy - distance),
+      FacingDirection.down => Vector2(center.dx, center.dy + distance),
+      FacingDirection.left => Vector2(center.dx - distance, center.dy),
+      FacingDirection.right => Vector2(center.dx + distance, center.dy),
+    };
+  }
+
   Rect get interactionProbe {
     const distance = 16.0;
     final body = bodyRect;
@@ -107,28 +120,39 @@ class PlayerComponent extends PositionComponent {
     Set<LogicalKeyboardKey> keysPressed, {
     required bool inputLocked,
   }) {
-    if (inputLocked) {
-      movement = Vector2.zero();
-      return;
-    }
-
     final horizontal = (keysPressed.contains(LogicalKeyboardKey.arrowRight) ? 1 : 0) -
         (keysPressed.contains(LogicalKeyboardKey.arrowLeft) ? 1 : 0);
     final vertical = (keysPressed.contains(LogicalKeyboardKey.arrowDown) ? 1 : 0) -
         (keysPressed.contains(LogicalKeyboardKey.arrowUp) ? 1 : 0);
 
-    movement = Vector2(horizontal.toDouble(), vertical.toDouble());
+    updateMovementFromVector(
+      Vector2(horizontal.toDouble(), vertical.toDouble()),
+      inputLocked: inputLocked,
+    );
+  }
+
+  void updateMovementFromVector(
+    Vector2 nextMovement, {
+    required bool inputLocked,
+  }) {
+
+    if (inputLocked) {
+      movement = Vector2.zero();
+      return;
+    }
+
+    movement = nextMovement.clone();
     if (movement.x != 0 && movement.y != 0) {
       movement.normalize();
     }
 
-    if (horizontal < 0) {
+    if (movement.x < 0 && movement.x.abs() >= movement.y.abs()) {
       facing = FacingDirection.left;
-    } else if (horizontal > 0) {
+    } else if (movement.x > 0 && movement.x.abs() >= movement.y.abs()) {
       facing = FacingDirection.right;
-    } else if (vertical < 0) {
+    } else if (movement.y < 0) {
       facing = FacingDirection.up;
-    } else if (vertical > 0) {
+    } else if (movement.y > 0) {
       facing = FacingDirection.down;
     }
   }

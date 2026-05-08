@@ -134,10 +134,7 @@ class WorldMapManager extends Component {
     await _sceneRoot.add(
       PlayerAttackEffect(
         facing: player.facing,
-        position: Vector2(
-          player.attackHitbox.center.dx,
-          player.attackHitbox.center.dy,
-        ),
+        position: player.attackEffectOrigin,
       ),
     );
     final hitEnemies = _enemies

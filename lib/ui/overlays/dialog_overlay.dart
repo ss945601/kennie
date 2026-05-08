@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/game_state_controller.dart';
 import '../../state/models/game_models.dart';
+import '../responsive_overlay.dart';
 import '../widgets/typewriter_text.dart';
 
 class DialogOverlay extends StatefulWidget {
@@ -17,6 +18,7 @@ class _DialogOverlayState extends State<DialogOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final ui = OverlayUiConfig.of(context);
     return SafeArea(
       child: Align(
         alignment: Alignment.bottomCenter,
@@ -27,12 +29,13 @@ class _DialogOverlayState extends State<DialogOverlay> {
               return const SizedBox.shrink();
             }
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: ui.all(16, compactValue: 12),
               child: _DialogTextCard(
                 key: _dialogKey,
                 session: session,
                 onAdvance: controller.advanceDialog,
                 onChoiceSelected: controller.chooseDialogChoice,
+                compact: ui.compact,
               ),
             );
           },
@@ -48,11 +51,13 @@ class _DialogTextCard extends StatefulWidget {
     required this.session,
     required this.onAdvance,
     required this.onChoiceSelected,
+    required this.compact,
   });
 
   final DialogSession session;
   final VoidCallback onAdvance;
   final ValueChanged<DialogChoice> onChoiceSelected;
+  final bool compact;
 
   @override
   State<_DialogTextCard> createState() => _DialogTextCardState();
@@ -80,15 +85,15 @@ class _DialogTextCardState extends State<_DialogTextCard> {
             widget.onAdvance();
           }
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(widget.compact ? 10 : 16),
         child: Ink(
           decoration: BoxDecoration(
             color: const Color(0xEE101B2F),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(widget.compact ? 10 : 16),
             border: Border.all(color: Colors.white24),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(widget.compact ? 10 : 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,35 +103,39 @@ class _DialogTextCardState extends State<_DialogTextCard> {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.amberAccent,
                         fontWeight: FontWeight.bold,
+                        fontSize: widget.compact ? 14 : null,
                       ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: widget.compact ? 5 : 8),
                 TypewriterText(
                   text: node.text,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.white,
+                        fontSize: widget.compact ? 12 : null,
+                      ),
                   onCompleted: () => setState(() => _completed = true),
                 ),
                 if (_completed && node.choices.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: widget.compact ? 8 : 16),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: widget.compact ? 5 : 8,
+                    runSpacing: widget.compact ? 5 : 8,
                     children: node.choices
                         .map(
                           (choice) => FilledButton.tonal(
                             onPressed: () => widget.onChoiceSelected(choice),
-                            child: Text(choice.label),
+                            child: Text(choice.label, style: TextStyle(fontSize: widget.compact ? 11 : 14)),
                           ),
                         )
                         .toList(),
                   ),
                 ] else if (_completed) ...[
-                  const SizedBox(height: 12),
-                  const Align(
+                  SizedBox(height: widget.compact ? 6 : 12),
+                  Align(
                     alignment: Alignment.centerRight,
                     child: Text(
                       '點擊繼續',
-                      style: TextStyle(color: Colors.white54),
+                      style: TextStyle(color: Colors.white54, fontSize: widget.compact ? 10 : 14),
                     ),
                   ),
                 ],
