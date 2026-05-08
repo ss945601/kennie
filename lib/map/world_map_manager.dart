@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
@@ -11,6 +13,7 @@ import '../components/objects/teleport_component.dart';
 import '../state/game_state_controller.dart';
 import '../state/models/game_models.dart';
 import 'map_definition.dart';
+import 'punyworld_renderer.dart';
 
 class WorldMapManager extends Component {
   WorldMapManager({
@@ -22,6 +25,7 @@ class WorldMapManager extends Component {
   final PlayerComponent player;
   final GameStateController controller;
   final Future<void> Function(String mapId, String spawnId) onTeleportTriggered;
+  final PunyworldRenderer _punyworldRenderer = PunyworldRenderer();
 
   final Component _sceneRoot = Component();
   final List<Rect> _collisionRects = <Rect>[];
@@ -56,18 +60,25 @@ class WorldMapManager extends Component {
     _spawnPoints.clear();
     _teleportLatch = false;
 
-    mapPixelSize = Vector2(
-      definition.sceneSize.x,
-      definition.sceneSize.y,
-    );
-    await _sceneRoot.add(_buildSceneBackdrop(definition));
+    mapPixelSize = Vector2(definition.sceneSize.x, definition.sceneSize.y);
+    await _sceneRoot.add(await _buildSceneBackdrop(definition));
 
     _spawnPoints.addAll(
       definition.spawnPoints.map(
         (key, value) => MapEntry(key, Vector2(value.x, value.y)),
       ),
     );
-    _collisionRects.addAll(definition.blockingRects);
+    if (definition.collisionLayers case final collisionLayers?) {
+      _collisionRects.addAll(
+        await _punyworldRenderer.buildCollisionRects(
+          tmjAsset: definition.mapAsset,
+          tileSize: definition.renderTileSize,
+          includeLayers: collisionLayers.toSet(),
+        ),
+      );
+    } else {
+      _collisionRects.addAll(definition.blockingRects);
+    }
     await _loadTeleports(definition);
     await _loadNpcs(definition);
     await _loadEnemies(definition);
@@ -79,7 +90,10 @@ class WorldMapManager extends Component {
     await _sceneRoot.add(player);
 
     final desiredSpawnId = spawnId ?? definition.defaultSpawnId;
-    final spawnPosition = explicitPlayerPosition ?? _spawnPoints[desiredSpawnId] ?? Vector2(64, 64);
+    final spawnPosition =
+        explicitPlayerPosition ??
+        _spawnPoints[desiredSpawnId] ??
+        Vector2(64, 64);
     player.snapTo(spawnPosition);
     controller.setMapContext(mapId: mapId, spawnId: desiredSpawnId);
     controller.setHudMessage(definition.hudMessage);
@@ -97,15 +111,19 @@ class WorldMapManager extends Component {
 
   Future<void> interactInFrontOfPlayer() async {
     final probe = player.interactionProbe;
-    final candidates = _interactables.where((entity) => entity.interactionBounds.overlaps(probe)).toList();
+    final candidates = _interactables
+        .where((entity) => entity.interactionBounds.overlaps(probe))
+        .toList();
     if (candidates.isEmpty) {
       controller.setHudMessage('前方沒有可互動物件。');
       return;
     }
-    candidates.sort((a, b) =>
-        (a.interactionBounds.center - probe.center).distanceSquared.compareTo(
-              (b.interactionBounds.center - probe.center).distanceSquared,
-            ));
+    candidates.sort(
+      (a, b) =>
+          (a.interactionBounds.center - probe.center).distanceSquared.compareTo(
+            (b.interactionBounds.center - probe.center).distanceSquared,
+          ),
+    );
     await candidates.first.interact();
   }
 
@@ -116,10 +134,15 @@ class WorldMapManager extends Component {
     await _sceneRoot.add(
       PlayerAttackEffect(
         facing: player.facing,
-        position: Vector2(player.attackHitbox.center.dx, player.attackHitbox.center.dy),
+        position: Vector2(
+          player.attackHitbox.center.dx,
+          player.attackHitbox.center.dy,
+        ),
       ),
     );
-    final hitEnemies = _enemies.where((enemy) => enemy.bodyRect.overlaps(player.attackHitbox)).toList();
+    final hitEnemies = _enemies
+        .where((enemy) => enemy.bodyRect.overlaps(player.attackHitbox))
+        .toList();
     if (hitEnemies.isEmpty) {
       controller.setHudMessage('你揮空了。');
       return;
@@ -140,7 +163,9 @@ class WorldMapManager extends Component {
     final activeTeleport = _teleports.where(
       (teleport) => teleport.toAbsoluteRect().overlaps(player.bodyRect),
     );
-    final currentTeleport = activeTeleport.isEmpty ? null : activeTeleport.first;
+    final currentTeleport = activeTeleport.isEmpty
+        ? null
+        : activeTeleport.first;
     if (currentTeleport == null) {
       _teleportLatch = false;
       return;
@@ -158,7 +183,10 @@ class WorldMapManager extends Component {
     }
 
     _teleportLatch = true;
-    onTeleportTriggered(currentTeleport.targetMapId, currentTeleport.targetSpawnId);
+    onTeleportTriggered(
+      currentTeleport.targetMapId,
+      currentTeleport.targetSpawnId,
+    );
   }
 
   bool _isVisible({String? showWhenFlag, String? hiddenWhenFlag}) {
@@ -180,15 +208,19 @@ class WorldMapManager extends Component {
 
   Future<void> _handleEnemyAttack(EnemyComponent enemy) async {
     final damage = controller.rollEnemyDamage(enemy.definition);
-    final defeated = controller.applyPlayerDamage(damage, source: enemy.definition.name);
+    final defeated = controller.applyPlayerDamage(
+      damage,
+      source: enemy.definition.name,
+    );
     if (!defeated) {
       return;
     }
-    final safeSpawn = _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
+    final safeSpawn =
+        _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
     player.snapTo(safeSpawn);
   }
 
-  Component _buildSceneBackdrop(MapDefinition definition) {
+  Future<Component> _buildSceneBackdrop(MapDefinition definition) async {
     final root = PositionComponent(priority: -1000);
     final backgroundColor = switch (definition.id) {
       'ruins' => const Color(0xFF1A1A24),
@@ -200,131 +232,94 @@ class WorldMapManager extends Component {
         position: Vector2.zero(),
         size: mapPixelSize,
         paint: Paint()..color = backgroundColor,
+        priority: -2000,
       ),
     );
 
     switch (definition.id) {
       case 'village':
-        _addVillageBackdrop(root);
+        await _addVillageBackdrop(root);
       case 'ruins':
-        _addRuinsBackdrop(root);
+        await _addRuinsBackdrop(root);
     }
 
     return root;
   }
 
-  void _addVillageBackdrop(PositionComponent root) {
-    final decorativeRects = <({Rect rect, Color color})>[
-      (rect: const Rect.fromLTWH(0, 0, 1440, 192), color: const Color(0xFF183724)),
-      (rect: const Rect.fromLTWH(0, 736, 1440, 224), color: const Color(0xFF21452B)),
-      (rect: const Rect.fromLTWH(160, 416, 1120, 144), color: const Color(0xFF6D5739)),
-      (rect: const Rect.fromLTWH(192, 448, 1056, 80), color: const Color(0xFF9A7C4D)),
-      (rect: const Rect.fromLTWH(224, 468, 992, 36), color: const Color(0xFFBEA06A)),
-      (rect: const Rect.fromLTWH(112, 600, 300, 80), color: const Color(0xFF1D4F69)),
-      (rect: const Rect.fromLTWH(96, 616, 332, 46), color: const Color(0xFF338AB2)),
-      (rect: const Rect.fromLTWH(544, 224, 352, 448), color: const Color(0xFF8B6B3F)),
-      (rect: const Rect.fromLTWH(576, 256, 288, 384), color: const Color(0xFFBDA06A)),
-      (rect: const Rect.fromLTWH(304, 248, 176, 152), color: const Color(0xFF6F5136)),
-      (rect: const Rect.fromLTWH(320, 264, 144, 120), color: const Color(0xFFC5A16D)),
-      (rect: const Rect.fromLTWH(912, 248, 176, 152), color: const Color(0xFF6F5136)),
-      (rect: const Rect.fromLTWH(928, 264, 144, 120), color: const Color(0xFFC5A16D)),
-      (rect: const Rect.fromLTWH(160, 256, 160, 576), color: const Color(0xFF295E43)),
-      (rect: const Rect.fromLTWH(1120, 224, 160, 608), color: const Color(0xFF295E43)),
-      (rect: const Rect.fromLTWH(1040, 320, 160, 128), color: const Color(0xFF5D5C68)),
-      (rect: const Rect.fromLTWH(1048, 328, 144, 112), color: const Color(0xFF928F9C)),
-      (rect: const Rect.fromLTWH(1088, 304, 64, 16), color: const Color(0xFFD9D4C7)),
-      (rect: const Rect.fromLTWH(1088, 432, 64, 16), color: const Color(0xFFD9D4C7)),
-    ];
-
-    for (final item in decorativeRects) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(item.rect.left, item.rect.top),
-          size: Vector2(item.rect.width, item.rect.height),
-          paint: Paint()..color = item.color,
-        ),
-      );
-    }
-
-    for (var index = 0; index < 10; index++) {
-      root.add(
-        CircleComponent(
-          radius: 18 + (index % 3) * 6,
-          position: Vector2(210 + index * 96, 150 + (index.isEven ? 24 : 0)),
-          paint: Paint()..color = const Color(0xAA6D8F3B),
-        ),
-      );
-    }
-
-    for (var index = 0; index < 12; index++) {
-      root.add(
-        CircleComponent(
-          radius: 12 + (index % 2) * 4,
-          position: Vector2(260 + index * 76, 610 + (index.isEven ? 10 : -2)),
-          paint: Paint()..color = const Color(0xAA84B65B),
-        ),
-      );
-    }
-
-    for (var index = 0; index < 18; index++) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(236 + index * 48, 482 + (index.isEven ? -4 : 10)),
-          size: Vector2(18, 8),
-          paint: Paint()..color = const Color(0x80DCC6A4),
-        ),
-      );
-    }
-
-    for (var index = 0; index < 6; index++) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(360 + index * 118, 394),
-          size: Vector2(14, 54),
-          paint: Paint()..color = const Color(0xFF4B3423),
-        ),
-      );
-      root.add(
-        CircleComponent(
-          radius: 9,
-          position: Vector2(367 + index * 118, 386),
-          paint: Paint()..color = const Color(0xFFE0BF6A),
-        ),
-      );
-    }
-
-    final flowerColors = <Color>[
-      const Color(0xFFE76FAD),
-      const Color(0xFFF4D35E),
-      const Color(0xFF8FE388),
-      const Color(0xFF72DDF7),
-    ];
-    for (var index = 0; index < 28; index++) {
-      root.add(
-        CircleComponent(
-          radius: 4,
-          position: Vector2(204 + (index % 14) * 22, 690 + (index ~/ 14) * 18),
-          paint: Paint()..color = flowerColors[index % flowerColors.length],
-        ),
-      );
-    }
+  Future<void> _addVillageBackdrop(PositionComponent root) async {
+    await root.add(
+      await _punyworldRenderer.buildMap(
+        tmjAsset: 'assets/images/solaria/map.tmj',
+        position: Vector2.zero(),
+        tileSize: 32,
+        priority: -995,
+      ),
+    );
   }
 
-  void _addRuinsBackdrop(PositionComponent root) {
+  Future<void> _addRuinsBackdrop(PositionComponent root) async {
+    await root.add(
+      await _punyworldRenderer.buildMap(
+        tmjAsset: 'assets/images/tiled/punnyworld/simple_map.tmj',
+        position: Vector2.zero(),
+        tileSize: 32,
+        priority: -980,
+      ),
+    );
+
     final decorativeRects = <({Rect rect, Color color})>[
-      (rect: const Rect.fromLTWH(16, 16, 448, 448), color: const Color(0xFF14141D)),
-      (rect: const Rect.fromLTWH(32, 32, 416, 416), color: const Color(0xFF2A2A34)),
-      (rect: const Rect.fromLTWH(64, 64, 352, 352), color: const Color(0xFF3A3A46)),
-      (rect: const Rect.fromLTWH(96, 336, 256, 48), color: const Color(0xFF716047)),
-      (rect: const Rect.fromLTWH(96, 344, 256, 24), color: const Color(0xFFA68F68)),
-      (rect: const Rect.fromLTWH(112, 112, 256, 32), color: const Color(0xFF5E5A67)),
-      (rect: const Rect.fromLTWH(160, 256, 160, 32), color: const Color(0xFF78674E)),
-      (rect: const Rect.fromLTWH(160, 288, 32, 96), color: const Color(0xFF78674E)),
-      (rect: const Rect.fromLTWH(288, 288, 32, 96), color: const Color(0xFF78674E)),
-      (rect: const Rect.fromLTWH(176, 96, 128, 64), color: const Color(0xFF8E7B57)),
-      (rect: const Rect.fromLTWH(96, 176, 48, 112), color: const Color(0xFF4A4A57)),
-      (rect: const Rect.fromLTWH(336, 176, 48, 112), color: const Color(0xFF4A4A57)),
-      (rect: const Rect.fromLTWH(208, 160, 64, 160), color: const Color(0x4035C2A1)),
+      (
+        rect: const Rect.fromLTWH(16, 16, 448, 448),
+        color: const Color(0xFF14141D),
+      ),
+      (
+        rect: const Rect.fromLTWH(32, 32, 416, 416),
+        color: const Color(0xFF2A2A34),
+      ),
+      (
+        rect: const Rect.fromLTWH(64, 64, 352, 352),
+        color: const Color(0xFF3A3A46),
+      ),
+      (
+        rect: const Rect.fromLTWH(96, 336, 256, 48),
+        color: const Color(0xFF716047),
+      ),
+      (
+        rect: const Rect.fromLTWH(96, 344, 256, 24),
+        color: const Color(0xFFA68F68),
+      ),
+      (
+        rect: const Rect.fromLTWH(112, 112, 256, 32),
+        color: const Color(0xFF5E5A67),
+      ),
+      (
+        rect: const Rect.fromLTWH(160, 256, 160, 32),
+        color: const Color(0xFF78674E),
+      ),
+      (
+        rect: const Rect.fromLTWH(160, 288, 32, 96),
+        color: const Color(0xFF78674E),
+      ),
+      (
+        rect: const Rect.fromLTWH(288, 288, 32, 96),
+        color: const Color(0xFF78674E),
+      ),
+      (
+        rect: const Rect.fromLTWH(176, 96, 128, 64),
+        color: const Color(0xFF8E7B57),
+      ),
+      (
+        rect: const Rect.fromLTWH(96, 176, 48, 112),
+        color: const Color(0xFF4A4A57),
+      ),
+      (
+        rect: const Rect.fromLTWH(336, 176, 48, 112),
+        color: const Color(0xFF4A4A57),
+      ),
+      (
+        rect: const Rect.fromLTWH(208, 160, 64, 160),
+        color: const Color(0x4035C2A1),
+      ),
     ];
 
     for (final item in decorativeRects) {
@@ -333,6 +328,7 @@ class WorldMapManager extends Component {
           position: Vector2(item.rect.left, item.rect.top),
           size: Vector2(item.rect.width, item.rect.height),
           paint: Paint()..color = item.color,
+          priority: -1500,
         ),
       );
     }
@@ -343,6 +339,7 @@ class WorldMapManager extends Component {
           position: Vector2(72 + index * 40, 80 + (index.isEven ? 8 : 0)),
           size: Vector2(16, 16),
           paint: Paint()..color = const Color(0xCC4A6A58),
+          priority: -1488,
         ),
       );
     }
@@ -353,6 +350,7 @@ class WorldMapManager extends Component {
           position: Vector2(92 + index * 72, 140),
           size: Vector2(22, 62),
           paint: Paint()..color = const Color(0xFF86818E),
+          priority: -1484,
         ),
       );
       root.add(
@@ -360,6 +358,7 @@ class WorldMapManager extends Component {
           position: Vector2(88 + index * 72, 132),
           size: Vector2(30, 10),
           paint: Paint()..color = const Color(0xFFB0A79A),
+          priority: -1483,
         ),
       );
     }
@@ -370,6 +369,7 @@ class WorldMapManager extends Component {
           radius: 5 + (index % 3),
           position: Vector2(84 + index * 38, 392 + (index.isEven ? 8 : -4)),
           paint: Paint()..color = const Color(0xFF54515C),
+          priority: -1480,
         ),
       );
     }
@@ -380,6 +380,7 @@ class WorldMapManager extends Component {
           position: Vector2(72 + (index % 7) * 46, 92 + (index ~/ 7) * 260),
           size: Vector2(12, 20),
           paint: Paint()..color = const Color(0x8048D9A8),
+          priority: -1478,
         ),
       );
     }
@@ -390,6 +391,7 @@ class WorldMapManager extends Component {
           radius: 7,
           position: Vector2(126 + index * 92, 326),
           paint: Paint()..color = const Color(0xFFE1AA53),
+          priority: -1476,
         ),
       );
       root.add(
@@ -397,9 +399,98 @@ class WorldMapManager extends Component {
           radius: 3,
           position: Vector2(126 + index * 92, 322),
           paint: Paint()..color = const Color(0xFFFFF1B0),
+          priority: -1475,
         ),
       );
     }
+
+    await _addRuinsProps(root);
+  }
+
+  Future<void> _addRuinsProps(PositionComponent root) async {
+    final props =
+        <
+          ({String asset, double x, double y, double w, double h, int priority})
+        >[
+          (
+            asset: 'items/column.png',
+            x: 118,
+            y: 112,
+            w: 30,
+            h: 84,
+            priority: -842,
+          ),
+          (
+            asset: 'items/column.png',
+            x: 332,
+            y: 112,
+            w: 30,
+            h: 84,
+            priority: -842,
+          ),
+          (
+            asset: 'items/spikes.png',
+            x: 194,
+            y: 322,
+            w: 30,
+            h: 18,
+            priority: -839,
+          ),
+          (
+            asset: 'items/spikes.png',
+            x: 258,
+            y: 322,
+            w: 30,
+            h: 18,
+            priority: -839,
+          ),
+          (
+            asset: 'items/prisoner.png',
+            x: 216,
+            y: 206,
+            w: 32,
+            h: 48,
+            priority: -838,
+          ),
+          (
+            asset: 'items/potion_life.png',
+            x: 232,
+            y: 112,
+            w: 18,
+            h: 18,
+            priority: -836,
+          ),
+        ];
+
+    for (final prop in props) {
+      await root.add(
+        await _punyworldRenderer.buildItemSprite(
+          assetPath: prop.asset,
+          position: Vector2(prop.x, prop.y),
+          size: Vector2(prop.w, prop.h),
+          priority: prop.priority,
+        ),
+      );
+    }
+
+    await root.add(
+      await _punyworldRenderer.buildItemAnimation(
+        assetPath: 'items/torch_spritesheet.png',
+        amount: 6,
+        position: Vector2(132, 192),
+        size: Vector2(26, 26),
+        priority: -835,
+      ),
+    );
+    await root.add(
+      await _punyworldRenderer.buildItemAnimation(
+        assetPath: 'items/torch_spritesheet.png',
+        amount: 6,
+        position: Vector2(324, 192),
+        size: Vector2(26, 26),
+        priority: -835,
+      ),
+    );
   }
 
   Future<void> _loadTeleports(MapDefinition definition) async {
@@ -419,7 +510,10 @@ class WorldMapManager extends Component {
 
   Future<void> _loadNpcs(MapDefinition definition) async {
     for (final npcDef in definition.npcs) {
-      if (!_isVisible(showWhenFlag: npcDef.showWhenFlag, hiddenWhenFlag: npcDef.hiddenWhenFlag)) {
+      if (!_isVisible(
+        showWhenFlag: npcDef.showWhenFlag,
+        hiddenWhenFlag: npcDef.hiddenWhenFlag,
+      )) {
         continue;
       }
       final npc = NpcComponent(
@@ -440,7 +534,10 @@ class WorldMapManager extends Component {
 
   Future<void> _loadEnemies(MapDefinition definition) async {
     for (final enemyDef in definition.enemies) {
-      if (!_isVisible(showWhenFlag: enemyDef.showWhenFlag, hiddenWhenFlag: enemyDef.hiddenWhenFlag)) {
+      if (!_isVisible(
+        showWhenFlag: enemyDef.showWhenFlag,
+        hiddenWhenFlag: enemyDef.hiddenWhenFlag,
+      )) {
         continue;
       }
       final enemyData = enemyCatalog[enemyDef.enemyId];
@@ -449,7 +546,9 @@ class WorldMapManager extends Component {
       }
       final enemy = EnemyComponent(
         position: Vector2(enemyDef.x, enemyDef.y),
-        size: enemyDef.enemyId == 'goblin_chief' ? Vector2(56, 64) : Vector2(40, 48),
+        size: enemyDef.enemyId == 'goblin_chief'
+            ? Vector2(56, 64)
+            : Vector2(40, 48),
         definition: enemyData,
         player: player,
         canMoveTo: _canEnemyMoveTo,
@@ -471,7 +570,10 @@ class WorldMapManager extends Component {
 
   Future<void> _loadChests(MapDefinition definition) async {
     for (final chestDef in definition.chests) {
-      if (!_isVisible(showWhenFlag: chestDef.showWhenFlag, hiddenWhenFlag: chestDef.hiddenWhenFlag)) {
+      if (!_isVisible(
+        showWhenFlag: chestDef.showWhenFlag,
+        hiddenWhenFlag: chestDef.hiddenWhenFlag,
+      )) {
         continue;
       }
       final chest = ChestComponent(
@@ -489,12 +591,13 @@ class WorldMapManager extends Component {
             controller.setFlag(giveFlag, true);
           }
           controller.addItem(chestDef.itemId);
-          controller.setHudMessage('獲得 ${itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId}。');
+          controller.setHudMessage(
+            '獲得 ${itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId}。',
+          );
         },
       );
       if (controller.flag('chest_${chestDef.id}_opened')) {
         chest.opened = true;
-        chest.paint.color = Colors.orange.withValues(alpha: 0.5);
       }
       _interactables.add(chest);
       await _sceneRoot.add(chest);
@@ -515,9 +618,7 @@ class WorldMapManager extends Component {
                   ? '補給都準備好了，遺跡裡看到哥布林就別猶豫。'
                   : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。',
               choices: claimedGift
-                  ? const [
-                      DialogChoice(label: '知道了'),
-                    ]
+                  ? const [DialogChoice(label: '知道了')]
                   : const [
                       DialogChoice(
                         label: '收下藥水',
@@ -574,9 +675,11 @@ class WorldMapManager extends Component {
               text: defeatedChief
                   ? '村子得救了。這片遺跡終於安靜下來。'
                   : hasKey
-                      ? '很好，舊鑰匙在你手上了。往東邊石門去，結束這場騷動。'
-                      : '先去商人那裡拿補給，再去東邊找到舊鑰匙。別空手闖遺跡。',
-              nextNodeId: defeatedChief ? 'finish' : (hasKey ? 'ready' : 'choice'),
+                  ? '很好，舊鑰匙在你手上了。往東邊石門去，結束這場騷動。'
+                  : '先去商人那裡拿補給，再去東邊找到舊鑰匙。別空手闖遺跡。',
+              nextNodeId: defeatedChief
+                  ? 'finish'
+                  : (hasKey ? 'ready' : 'choice'),
               setFlagOnEnter: 'intro_seen',
             ),
             'choice': const DialogNode(

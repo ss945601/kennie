@@ -99,6 +99,7 @@ class MapDefinition {
     required this.enemies,
     required this.chests,
     required this.hudMessage,
+    this.collisionLayers,
   });
 
   final String id;
@@ -113,6 +114,7 @@ class MapDefinition {
   final List<SceneEnemyDefinition> enemies;
   final List<SceneChestDefinition> chests;
   final String hudMessage;
+  final List<String>? collisionLayers;
 }
 
 const mapDefinitions = <String, MapDefinition>{
@@ -123,10 +125,10 @@ const mapDefinitions = <String, MapDefinition>{
     sceneSize: ScenePoint(1440, 960),
     defaultSpawnId: 'village_square',
     spawnPoints: {
-      'village_square': ScenePoint(608, 544),
-      'market_lane': ScenePoint(768, 544),
-      'ruins_gate': ScenePoint(1088, 416),
-      'return_from_ruins': ScenePoint(1056, 480),
+      'village_square': ScenePoint(640, 512),
+      'market_lane': ScenePoint(800, 512),
+      'ruins_gate': ScenePoint(1184, 512),
+      'return_from_ruins': ScenePoint(1120, 512),
     },
     blockingRects: [
       Rect.fromLTWH(0, 0, 160, 960),
@@ -139,7 +141,7 @@ const mapDefinitions = <String, MapDefinition>{
     ],
     teleports: [
       SceneTeleportDefinition(
-        rect: Rect.fromLTWH(1136, 352, 96, 96),
+        rect: Rect.fromLTWH(1248, 448, 96, 96),
         targetMapId: 'ruins',
         targetSpawnId: 'entry',
         requiredFlag: 'has_key_01',
@@ -150,22 +152,22 @@ const mapDefinitions = <String, MapDefinition>{
       SceneNpcDefinition(
         id: 'elder',
         label: '長老',
-        x: 608,
-        y: 448,
+        x: 480,
+        y: 416,
         spritePath: 'npc/wizard_idle.png',
       ),
       SceneNpcDefinition(
         id: 'merchant',
         label: '商人',
-        x: 768,
+        x: 800,
         y: 480,
         spritePath: 'npc/critter_idle.png',
       ),
       SceneNpcDefinition(
         id: 'scout',
         label: '斥候',
-        x: 960,
-        y: 416,
+        x: 1120,
+        y: 544,
         spritePath: 'npc/critter_idle.png',
       ),
     ],
@@ -175,7 +177,7 @@ const mapDefinitions = <String, MapDefinition>{
         enemyId: 'slime',
         label: '訓練史萊姆',
         x: 960,
-        y: 608,
+        y: 704,
         hiddenWhenFlag: 'beat_slime_01',
       ),
       SceneEnemyDefinition(
@@ -190,7 +192,7 @@ const mapDefinitions = <String, MapDefinition>{
         id: 'slime_garden',
         enemyId: 'slime',
         label: '花圃史萊姆',
-        x: 464,
+        x: 448,
         y: 704,
         hiddenWhenFlag: 'beat_slime_02',
       ),
@@ -208,17 +210,18 @@ const mapDefinitions = <String, MapDefinition>{
         id: 'gate_key',
         itemId: 'old_key',
         x: 896,
-        y: 544,
+        y: 704,
         giveFlag: 'has_key_01',
       ),
       SceneChestDefinition(
         id: 'market_supply',
         itemId: 'potion',
         x: 704,
-        y: 576,
+        y: 544,
       ),
     ],
     hudMessage: '新冒險開始。先和長老談談，再往東邊遺跡前進。',
+    collisionLayers: ['water', 'decoration'],
   ),
   'ruins': MapDefinition(
     id: 'ruins',
