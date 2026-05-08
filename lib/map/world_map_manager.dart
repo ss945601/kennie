@@ -223,7 +223,8 @@ class WorldMapManager extends Component {
   Future<Component> _buildSceneBackdrop(MapDefinition definition) async {
     final root = PositionComponent(priority: -1000);
     final backgroundColor = switch (definition.id) {
-      'ruins' => const Color(0xFF1A1A24),
+      'ruins' => const Color(0xFFE5D6AE),
+      'village' => const Color(0xFFA7D7D8),
       _ => const Color(0xFF1C2F20),
     };
 
@@ -236,261 +237,16 @@ class WorldMapManager extends Component {
       ),
     );
 
-    switch (definition.id) {
-      case 'village':
-        await _addVillageBackdrop(root);
-      case 'ruins':
-        await _addRuinsBackdrop(root);
-    }
-
-    return root;
-  }
-
-  Future<void> _addVillageBackdrop(PositionComponent root) async {
     await root.add(
       await _punyworldRenderer.buildMap(
-        tmjAsset: 'assets/images/solaria/map.tmj',
+        tmjAsset: definition.mapAsset,
         position: Vector2.zero(),
-        tileSize: 32,
+        tileSize: definition.renderTileSize,
         priority: -995,
       ),
     );
-  }
 
-  Future<void> _addRuinsBackdrop(PositionComponent root) async {
-    await root.add(
-      await _punyworldRenderer.buildMap(
-        tmjAsset: 'assets/images/tiled/punnyworld/simple_map.tmj',
-        position: Vector2.zero(),
-        tileSize: 32,
-        priority: -980,
-      ),
-    );
-
-    final decorativeRects = <({Rect rect, Color color})>[
-      (
-        rect: const Rect.fromLTWH(16, 16, 448, 448),
-        color: const Color(0xFF14141D),
-      ),
-      (
-        rect: const Rect.fromLTWH(32, 32, 416, 416),
-        color: const Color(0xFF2A2A34),
-      ),
-      (
-        rect: const Rect.fromLTWH(64, 64, 352, 352),
-        color: const Color(0xFF3A3A46),
-      ),
-      (
-        rect: const Rect.fromLTWH(96, 336, 256, 48),
-        color: const Color(0xFF716047),
-      ),
-      (
-        rect: const Rect.fromLTWH(96, 344, 256, 24),
-        color: const Color(0xFFA68F68),
-      ),
-      (
-        rect: const Rect.fromLTWH(112, 112, 256, 32),
-        color: const Color(0xFF5E5A67),
-      ),
-      (
-        rect: const Rect.fromLTWH(160, 256, 160, 32),
-        color: const Color(0xFF78674E),
-      ),
-      (
-        rect: const Rect.fromLTWH(160, 288, 32, 96),
-        color: const Color(0xFF78674E),
-      ),
-      (
-        rect: const Rect.fromLTWH(288, 288, 32, 96),
-        color: const Color(0xFF78674E),
-      ),
-      (
-        rect: const Rect.fromLTWH(176, 96, 128, 64),
-        color: const Color(0xFF8E7B57),
-      ),
-      (
-        rect: const Rect.fromLTWH(96, 176, 48, 112),
-        color: const Color(0xFF4A4A57),
-      ),
-      (
-        rect: const Rect.fromLTWH(336, 176, 48, 112),
-        color: const Color(0xFF4A4A57),
-      ),
-      (
-        rect: const Rect.fromLTWH(208, 160, 64, 160),
-        color: const Color(0x4035C2A1),
-      ),
-    ];
-
-    for (final item in decorativeRects) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(item.rect.left, item.rect.top),
-          size: Vector2(item.rect.width, item.rect.height),
-          paint: Paint()..color = item.color,
-          priority: -1500,
-        ),
-      );
-    }
-
-    for (var index = 0; index < 8; index++) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(72 + index * 40, 80 + (index.isEven ? 8 : 0)),
-          size: Vector2(16, 16),
-          paint: Paint()..color = const Color(0xCC4A6A58),
-          priority: -1488,
-        ),
-      );
-    }
-
-    for (var index = 0; index < 5; index++) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(92 + index * 72, 140),
-          size: Vector2(22, 62),
-          paint: Paint()..color = const Color(0xFF86818E),
-          priority: -1484,
-        ),
-      );
-      root.add(
-        RectangleComponent(
-          position: Vector2(88 + index * 72, 132),
-          size: Vector2(30, 10),
-          paint: Paint()..color = const Color(0xFFB0A79A),
-          priority: -1483,
-        ),
-      );
-    }
-
-    for (var index = 0; index < 9; index++) {
-      root.add(
-        CircleComponent(
-          radius: 5 + (index % 3),
-          position: Vector2(84 + index * 38, 392 + (index.isEven ? 8 : -4)),
-          paint: Paint()..color = const Color(0xFF54515C),
-          priority: -1480,
-        ),
-      );
-    }
-
-    for (var index = 0; index < 14; index++) {
-      root.add(
-        RectangleComponent(
-          position: Vector2(72 + (index % 7) * 46, 92 + (index ~/ 7) * 260),
-          size: Vector2(12, 20),
-          paint: Paint()..color = const Color(0x8048D9A8),
-          priority: -1478,
-        ),
-      );
-    }
-
-    for (var index = 0; index < 4; index++) {
-      root.add(
-        CircleComponent(
-          radius: 7,
-          position: Vector2(126 + index * 92, 326),
-          paint: Paint()..color = const Color(0xFFE1AA53),
-          priority: -1476,
-        ),
-      );
-      root.add(
-        CircleComponent(
-          radius: 3,
-          position: Vector2(126 + index * 92, 322),
-          paint: Paint()..color = const Color(0xFFFFF1B0),
-          priority: -1475,
-        ),
-      );
-    }
-
-    await _addRuinsProps(root);
-  }
-
-  Future<void> _addRuinsProps(PositionComponent root) async {
-    final props =
-        <
-          ({String asset, double x, double y, double w, double h, int priority})
-        >[
-          (
-            asset: 'items/column.png',
-            x: 118,
-            y: 112,
-            w: 30,
-            h: 84,
-            priority: -842,
-          ),
-          (
-            asset: 'items/column.png',
-            x: 332,
-            y: 112,
-            w: 30,
-            h: 84,
-            priority: -842,
-          ),
-          (
-            asset: 'items/spikes.png',
-            x: 194,
-            y: 322,
-            w: 30,
-            h: 18,
-            priority: -839,
-          ),
-          (
-            asset: 'items/spikes.png',
-            x: 258,
-            y: 322,
-            w: 30,
-            h: 18,
-            priority: -839,
-          ),
-          (
-            asset: 'items/prisoner.png',
-            x: 216,
-            y: 206,
-            w: 32,
-            h: 48,
-            priority: -838,
-          ),
-          (
-            asset: 'items/potion_life.png',
-            x: 232,
-            y: 112,
-            w: 18,
-            h: 18,
-            priority: -836,
-          ),
-        ];
-
-    for (final prop in props) {
-      await root.add(
-        await _punyworldRenderer.buildItemSprite(
-          assetPath: prop.asset,
-          position: Vector2(prop.x, prop.y),
-          size: Vector2(prop.w, prop.h),
-          priority: prop.priority,
-        ),
-      );
-    }
-
-    await root.add(
-      await _punyworldRenderer.buildItemAnimation(
-        assetPath: 'items/torch_spritesheet.png',
-        amount: 6,
-        position: Vector2(132, 192),
-        size: Vector2(26, 26),
-        priority: -835,
-      ),
-    );
-    await root.add(
-      await _punyworldRenderer.buildItemAnimation(
-        assetPath: 'items/torch_spritesheet.png',
-        amount: 6,
-        position: Vector2(324, 192),
-        size: Vector2(26, 26),
-        priority: -835,
-      ),
-    );
+    return root;
   }
 
   Future<void> _loadTeleports(MapDefinition definition) async {
@@ -644,8 +400,8 @@ class WorldMapManager extends Component {
               id: 'start',
               speaker: '斥候',
               text: controller.flag('has_key_01')
-                  ? '你找到鑰匙了。石門就在我身後，裡頭有哥布林守衛。'
-                  : '河道北側的補給箱裡藏著舊鑰匙。先拿到它，才能開遺跡大門。',
+                  ? '你找到鑰匙了。右側密林出口已經能通行，穿過去就是下一區。'
+                  : '右下木橋旁的補給箱裡藏著舊鑰匙。先拿到它，才能打開右側路障。',
             ),
           },
         );
@@ -675,8 +431,8 @@ class WorldMapManager extends Component {
               text: defeatedChief
                   ? '村子得救了。這片遺跡終於安靜下來。'
                   : hasKey
-                  ? '很好，舊鑰匙在你手上了。往東邊石門去，結束這場騷動。'
-                  : '先去商人那裡拿補給，再去東邊找到舊鑰匙。別空手闖遺跡。',
+                  ? '很好，舊鑰匙在你手上了。沿著右側木橋出去，把海灣的騷動壓下來。'
+                  : '先去商人那裡拿補給，再去右下方找到舊鑰匙。別空手往外衝。',
               nextNodeId: defeatedChief
                   ? 'finish'
                   : (hasKey ? 'ready' : 'choice'),

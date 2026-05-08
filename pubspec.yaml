@@ -36,5 +36,6 @@ flutter:
     - assets/images/tiled/punnyworld/
     - assets/images/items/
     - assets/images/tile/
+    - assets/images/multi_scenario/tile/
   # Optional: to use a bundled pixel font, add the TTF at
   # assets/fonts/PressStart2P-Regular.ttf and uncomment the `fonts` section.

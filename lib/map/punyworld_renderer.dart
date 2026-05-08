@@ -11,6 +11,7 @@ class _TilesetConfig {
     required this.tileWidth,
     required this.tileHeight,
     required this.columns,
+    this.blockingLocalTileIds = const <int>{},
   });
 
   final String imageAsset;
@@ -18,6 +19,7 @@ class _TilesetConfig {
   final double tileWidth;
   final double tileHeight;
   final int columns;
+  final Set<int> blockingLocalTileIds;
 }
 
 class PunyworldRenderer {
@@ -98,7 +100,18 @@ class PunyworldRenderer {
 
       final data = _decodeLayerData(layer);
       for (var index = 0; index < data.length && index < occupied.length; index++) {
-        if (data[index] >= tileset.firstGid) {
+        final gid = data[index];
+        if (gid < tileset.firstGid) {
+          continue;
+        }
+
+        if (tileset.blockingLocalTileIds.isEmpty) {
+          occupied[index] = true;
+          continue;
+        }
+
+        final localId = gid - tileset.firstGid;
+        if (tileset.blockingLocalTileIds.contains(localId)) {
           occupied[index] = true;
         }
       }
@@ -265,13 +278,35 @@ class PunyworldRenderer {
     final tsjAsset = _resolveRelativeAsset(tmjAsset, source);
     final tsjJson = jsonDecode(await rootBundle.loadString(tsjAsset)) as Map<String, dynamic>;
     final image = tsjJson['image'] as String? ?? '';
+    final blockingLocalTileIds = _extractBlockingLocalTileIds(tsjJson);
     return _TilesetConfig(
       imageAsset: _normalizeSpriteAssetPath(_resolveRelativeAsset(tsjAsset, image)),
       firstGid: firstGid,
       tileWidth: (tsjJson['tilewidth'] as num?)?.toDouble() ?? _tilePixels,
       tileHeight: (tsjJson['tileheight'] as num?)?.toDouble() ?? _tilePixels,
       columns: (tsjJson['columns'] as num?)?.toInt() ?? _columns,
+      blockingLocalTileIds: blockingLocalTileIds,
     );
+  }
+
+  Set<int> _extractBlockingLocalTileIds(Map<String, dynamic> tsjJson) {
+    final tiles = (tsjJson['tiles'] as List<dynamic>? ?? const <dynamic>[])
+        .cast<Map<String, dynamic>>();
+    final blockingLocalTileIds = <int>{};
+    for (final tile in tiles) {
+      final localId = (tile['id'] as num?)?.toInt();
+      if (localId == null) {
+        continue;
+      }
+
+      final tileType = tile['type'] as String? ?? tile['class'] as String? ?? '';
+      final objectGroup = tile['objectgroup'] as Map<String, dynamic>?;
+      final objects = (objectGroup?['objects'] as List<dynamic>? ?? const <dynamic>[]);
+      if (tileType == 'water' || objects.isNotEmpty) {
+        blockingLocalTileIds.add(localId);
+      }
+    }
+    return blockingLocalTileIds;
   }
 
   String _normalizeSpriteAssetPath(String assetPath) {
