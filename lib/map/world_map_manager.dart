@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,7 @@ class WorldMapManager extends Component {
   final List<EnemyComponent> _enemies = <EnemyComponent>[];
   final List<TeleportComponent> _teleports = <TeleportComponent>[];
   final Map<String, Vector2> _spawnPoints = <String, Vector2>{};
+  static const double _enemyPathGrid = 16;
 
   Vector2 mapPixelSize = Vector2.zero();
   bool _teleportLatch = false;
@@ -393,6 +395,7 @@ class WorldMapManager extends Component {
         definition: enemyData,
         player: player,
         canMoveTo: _canEnemyMoveTo,
+        findPath: _findEnemyPath,
         onAttackPlayer: _handleEnemyAttack,
         onDefeated: (enemy) async {
           _enemies.remove(enemy);
@@ -407,6 +410,170 @@ class WorldMapManager extends Component {
       _enemies.add(enemy);
       await _sceneRoot.add(enemy);
     }
+  }
+
+  List<Vector2> _findEnemyPath(Rect fromBodyRect, Rect targetBodyRect) {
+    final start = _toGrid(fromBodyRect.center);
+    final goal = _toGrid(targetBodyRect.center);
+    final width = fromBodyRect.width;
+    final height = fromBodyRect.height;
+
+    final targetCell = _pickNearestWalkableTarget(goal, width: width, height: height);
+    if (targetCell == null) {
+      return const <Vector2>[];
+    }
+
+    final open = <_PathCell>[start];
+    final cameFrom = <_PathCell, _PathCell>{};
+    final gScore = <_PathCell, double>{start: 0};
+    final fScore = <_PathCell, double>{start: _heuristic(start, targetCell)};
+    final closed = <_PathCell>{};
+
+    var iterations = 0;
+    while (open.isNotEmpty && iterations < 2400) {
+      iterations += 1;
+      _PathCell current = open.first;
+      for (final candidate in open.skip(1)) {
+        if ((fScore[candidate] ?? double.infinity) <
+            (fScore[current] ?? double.infinity)) {
+          current = candidate;
+        }
+      }
+
+      if (current == targetCell) {
+        return _reconstructPath(cameFrom, current)
+            .skip(1)
+            .map((cell) => _cellCenter(cell))
+            .toList();
+      }
+
+      open.remove(current);
+      closed.add(current);
+
+      for (final neighbor in _neighbors(current)) {
+        if (closed.contains(neighbor) ||
+            !_isWalkableCell(neighbor, width: width, height: height)) {
+          continue;
+        }
+
+        final diagonal = neighbor.x != current.x && neighbor.y != current.y;
+        if (diagonal) {
+          final n1 = _PathCell(neighbor.x, current.y);
+          final n2 = _PathCell(current.x, neighbor.y);
+          if (!_isWalkableCell(n1, width: width, height: height) ||
+              !_isWalkableCell(n2, width: width, height: height)) {
+            continue;
+          }
+        }
+
+        final stepCost = diagonal ? 1.41421356237 : 1.0;
+        final tentative = (gScore[current] ?? double.infinity) + stepCost;
+        if (tentative >= (gScore[neighbor] ?? double.infinity)) {
+          continue;
+        }
+
+        cameFrom[neighbor] = current;
+        gScore[neighbor] = tentative;
+        fScore[neighbor] = tentative + _heuristic(neighbor, targetCell);
+        if (!open.contains(neighbor)) {
+          open.add(neighbor);
+        }
+      }
+    }
+
+    return const <Vector2>[];
+  }
+
+  _PathCell? _pickNearestWalkableTarget(
+    _PathCell target, {
+    required double width,
+    required double height,
+  }) {
+    if (_isWalkableCell(target, width: width, height: height)) {
+      return target;
+    }
+    for (var radius = 1; radius <= 5; radius += 1) {
+      _PathCell? best;
+      var bestDist = double.infinity;
+      for (var dx = -radius; dx <= radius; dx += 1) {
+        for (var dy = -radius; dy <= radius; dy += 1) {
+          final candidate = _PathCell(target.x + dx, target.y + dy);
+          if (!_isWalkableCell(candidate, width: width, height: height)) {
+            continue;
+          }
+          final dist = _heuristic(candidate, target);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = candidate;
+          }
+        }
+      }
+      if (best != null) {
+        return best;
+      }
+    }
+    return null;
+  }
+
+  List<_PathCell> _neighbors(_PathCell cell) {
+    return <_PathCell>[
+      _PathCell(cell.x + 1, cell.y),
+      _PathCell(cell.x - 1, cell.y),
+      _PathCell(cell.x, cell.y + 1),
+      _PathCell(cell.x, cell.y - 1),
+      _PathCell(cell.x + 1, cell.y + 1),
+      _PathCell(cell.x + 1, cell.y - 1),
+      _PathCell(cell.x - 1, cell.y + 1),
+      _PathCell(cell.x - 1, cell.y - 1),
+    ];
+  }
+
+  bool _isWalkableCell(
+    _PathCell cell, {
+    required double width,
+    required double height,
+  }) {
+    final center = _cellCenter(cell);
+    final rect = Rect.fromCenter(
+      center: Offset(center.x, center.y),
+      width: width,
+      height: height,
+    );
+    return canMoveTo(rect);
+  }
+
+  _PathCell _toGrid(Offset worldPoint) {
+    return _PathCell(
+      (worldPoint.dx / _enemyPathGrid).floor(),
+      (worldPoint.dy / _enemyPathGrid).floor(),
+    );
+  }
+
+  Vector2 _cellCenter(_PathCell cell) {
+    return Vector2(
+      (cell.x + 0.5) * _enemyPathGrid,
+      (cell.y + 0.5) * _enemyPathGrid,
+    );
+  }
+
+  double _heuristic(_PathCell a, _PathCell b) {
+    final dx = (a.x - b.x).abs();
+    final dy = (a.y - b.y).abs();
+    return math.max(dx, dy).toDouble();
+  }
+
+  List<_PathCell> _reconstructPath(
+    Map<_PathCell, _PathCell> cameFrom,
+    _PathCell current,
+  ) {
+    final path = <_PathCell>[current];
+    var cursor = current;
+    while (cameFrom.containsKey(cursor)) {
+      final parent = cameFrom[cursor]!;
+      path.add(parent);
+      cursor = parent;
+    }
+    return path.reversed.toList();
   }
 
   Future<void> _loadChests(MapDefinition definition) async {
@@ -553,4 +720,22 @@ class WorldMapManager extends Component {
         );
     }
   }
+}
+
+class _PathCell {
+  const _PathCell(this.x, this.y);
+
+  final int x;
+  final int y;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is _PathCell && other.x == x && other.y == y;
+  }
+
+  @override
+  int get hashCode => Object.hash(x, y);
 }

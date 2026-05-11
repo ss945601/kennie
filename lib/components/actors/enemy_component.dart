@@ -15,6 +15,7 @@ class EnemyComponent extends PositionComponent {
     required this.definition,
     required this.player,
     required this.canMoveTo,
+    required this.findPath,
     required this.onAttackPlayer,
     required this.onDefeated,
   })  : _spawnPosition = position.clone(),
@@ -23,6 +24,8 @@ class EnemyComponent extends PositionComponent {
   final EnemyDefinition definition;
   final PlayerComponent player;
   final bool Function(Rect targetRect) canMoveTo;
+  final List<Vector2> Function(Rect fromBodyRect, Rect targetBodyRect)
+  findPath;
   final Future<void> Function(EnemyComponent enemy) onAttackPlayer;
   final Future<void> Function(EnemyComponent enemy) onDefeated;
   final Vector2 _spawnPosition;
@@ -32,6 +35,8 @@ class EnemyComponent extends PositionComponent {
   double _attackCooldownRemaining = 0;
   bool _provoked = false;
   bool _facingLeft = false;
+  final List<Vector2> _pathWaypoints = <Vector2>[];
+  double _pathRefreshRemaining = 0;
 
   Rect get bodyRect => Rect.fromLTWH(position.x + 10, position.y + 14, size.x - 20, size.y - 18);
   int get currentHp => _currentHp;
@@ -95,13 +100,32 @@ class EnemyComponent extends PositionComponent {
     if (shouldChase) {
       _provoked = true;
       if (distanceToPlayer <= definition.attackRange) {
+        _pathWaypoints.clear();
+        _pathRefreshRemaining = 0;
         if (_attackCooldownRemaining <= 0) {
           _attackCooldownRemaining = definition.attackCooldown;
           unawaited(onAttackPlayer(this));
         }
         return;
       }
-      _moveToward(player.position, dt, definition.moveSpeed);
+
+      _pathRefreshRemaining = math.max(0, _pathRefreshRemaining - dt);
+      if (_pathRefreshRemaining <= 0 || _pathWaypoints.isEmpty) {
+        _pathWaypoints
+          ..clear()
+          ..addAll(findPath(bodyRect, player.bodyRect));
+        _pathRefreshRemaining = 0.28;
+      }
+
+      if (_pathWaypoints.isNotEmpty) {
+        final waypoint = _pathWaypoints.first;
+        _moveTowardBodyCenter(waypoint, dt, definition.moveSpeed);
+        if ((bodyRect.center - Offset(waypoint.x, waypoint.y)).distance <= 10) {
+          _pathWaypoints.removeAt(0);
+        }
+      } else {
+        _moveToward(player.position, dt, definition.moveSpeed);
+      }
       return;
     }
 
@@ -119,6 +143,24 @@ class EnemyComponent extends PositionComponent {
     direction.normalize();
     _facingLeft = direction.x < 0;
     final delta = direction * speed * dt;
+    final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
+    if (canMoveTo(nextRect)) {
+      position += delta;
+    }
+  }
+
+  void _moveTowardBodyCenter(Vector2 targetCenter, double dt, double speed) {
+    final center = bodyRect.center;
+    final direction = Vector2(targetCenter.x - center.dx, targetCenter.y - center.dy);
+    if (direction.length2 == 0) {
+      return;
+    }
+    direction.normalize();
+    _facingLeft = direction.x < 0;
+    final maxStep = speed * dt;
+    final remaining = (Offset(targetCenter.x, targetCenter.y) - center).distance;
+    final step = math.min(maxStep, remaining);
+    final delta = direction * step;
     final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
     if (canMoveTo(nextRect)) {
       position += delta;
