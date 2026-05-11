@@ -7,6 +7,7 @@ import 'package:nes_ui/nes_ui.dart';
 import '../../audio_manager.dart';
 import '../../game/overlay_ids.dart';
 import '../../game/rpg_game.dart';
+import '../../platform/web_display_helper.dart';
 import '../responsive_overlay.dart';
 
 class TitleMenuOverlay extends StatelessWidget {
@@ -101,8 +102,9 @@ class TitleMenuOverlay extends StatelessWidget {
                               Expanded(
                                 child: NesButton(
                                   type: NesButtonType.success,
-                                  onPressed: () {
+                                  onPressed: () async {
                                     unawaited(AudioManager.instance.playActionSfx());
+                                    await enterLandscapeFullscreen();
                                     game.startNewGame();
                                   },
                                   buttonWidth: double.infinity,
@@ -124,6 +126,7 @@ class TitleMenuOverlay extends StatelessWidget {
                                   type: NesButtonType.primary,
                                   onPressed: () async {
                                     unawaited(AudioManager.instance.playActionSfx());
+                                    await enterLandscapeFullscreen();
                                     final loaded = await game.continueGame();
                                     if (!context.mounted || loaded) {
                                       return;
