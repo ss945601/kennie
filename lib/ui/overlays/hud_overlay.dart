@@ -27,7 +27,6 @@ class HudOverlay extends StatelessWidget {
                   0.0,
                   1.0,
                 );
-          final imageSize = ui.value(72, compactValue: 52);
           final fontSize = ui.font(14, compactValue: 12);
           final metaFontSize = ui.font(12, compactValue: 10);
           final panelGap = ui.value(12, compactValue: 8);
@@ -350,9 +349,9 @@ class _VirtualJoystick extends StatefulWidget {
 class _VirtualJoystickState extends State<_VirtualJoystick> {
   Offset _knobOffset = Offset.zero;
 
-  double get _baseSize => widget.compact ? 78 : 128;
-  double get _knobSize => widget.compact ? 32 : 52;
-  double get _travelRadius => widget.compact ? 22 : 38;
+  double get _baseSize => widget.compact ? 160 : 206;
+  double get _knobSize => widget.compact ? 70 : 92;
+  double get _travelRadius => widget.compact ? 45 : 66;
 
   @override
   void didUpdateWidget(covariant _VirtualJoystick oldWidget) {
