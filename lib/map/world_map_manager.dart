@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';
+import '../components/effects/damage_number_effect.dart';
 import '../components/effects/player_attack_effect.dart';
 import '../components/effects/player_fireball_effect.dart';
 import '../components/objects/chest_component.dart';
@@ -148,6 +149,11 @@ class WorldMapManager extends Component {
 
     for (final enemy in hitEnemies) {
       final damage = controller.rollPlayerDamage(enemy.definition.defense);
+      _showDamageNumber(
+        position: _enemyDamagePosition(enemy),
+        amount: damage,
+        isPlayerHit: false,
+      );
       final defeated = await enemy.receiveDamage(damage);
       if (!defeated) {
         controller.setHudMessage('命中 ${enemy.definition.name}，造成 $damage 點傷害。');
@@ -239,6 +245,11 @@ class WorldMapManager extends Component {
 
   Future<void> _handleEnemyAttack(EnemyComponent enemy) async {
     final damage = controller.rollEnemyDamage(enemy.definition);
+    _showDamageNumber(
+      position: _playerDamagePosition(),
+      amount: damage,
+      isPlayerHit: true,
+    );
     final defeated = controller.applyPlayerDamage(
       damage,
       source: enemy.definition.name,
@@ -256,10 +267,42 @@ class WorldMapManager extends Component {
       return;
     }
     final damage = controller.rollPlayerDamage(enemy.definition.defense) + 6;
+    _showDamageNumber(
+      position: _enemyDamagePosition(enemy),
+      amount: damage,
+      isPlayerHit: false,
+    );
     final defeated = await enemy.receiveDamage(damage);
     if (!defeated) {
       controller.setHudMessage('火球命中 ${enemy.definition.name}，造成 $damage 點傷害。');
     }
+  }
+
+  Vector2 _enemyDamagePosition(EnemyComponent enemy) {
+    final body = enemy.bodyRect;
+    return Vector2(body.center.dx, body.top - 10);
+  }
+
+  Vector2 _playerDamagePosition() {
+    final body = player.bodyRect;
+    return Vector2(body.center.dx, body.top - 12);
+  }
+
+  void _showDamageNumber({
+    required Vector2 position,
+    required int amount,
+    required bool isPlayerHit,
+  }) {
+    if (amount <= 0) {
+      return;
+    }
+    _sceneRoot.add(
+      DamageNumberEffect(
+        amount: amount,
+        isPlayerHit: isPlayerHit,
+        position: position,
+      ),
+    );
   }
 
   Future<Component> _buildSceneBackdrop(MapDefinition definition) async {
