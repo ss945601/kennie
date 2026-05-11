@@ -61,7 +61,7 @@ class _HudOverlayState extends State<HudOverlay> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Lv.${controller.level}  ${controller.currentMapId.toUpperCase()}',
+                                      '${controller.playerName}  Lv.${controller.level}  ${controller.currentMapId.toUpperCase()}',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w700,

@@ -46,6 +46,7 @@ class WorldMapManager extends Component {
   final List<_PendingRespawn> _pendingRespawns = <_PendingRespawn>[];
   MapDefinition? _activeDefinition;
   static const double _enemyPathGrid = 16;
+  static const int _maxActiveEnemies = 12;
 
   Vector2 mapPixelSize = Vector2.zero();
   bool _teleportLatch = false;
@@ -611,10 +612,23 @@ class WorldMapManager extends Component {
     SceneEnemyDefinition enemyDef,
     EnemyDefinition baseEnemy,
   ) async {
+    if (_enemies.where((enemy) => enemy.isMounted).length >= _maxActiveEnemies) {
+      return;
+    }
+
+    final spawnPosition = _resolveEnemySpawnPosition(
+      initial: Vector2(enemyDef.x, enemyDef.y),
+      isBoss: enemyDef.isBoss,
+    );
+    if (spawnPosition == null) {
+      return;
+    }
+
     final scaled = _scaledEnemy(baseEnemy);
+    final enemySize = enemyDef.isBoss ? Vector2(56, 64) : Vector2(40, 48);
     final enemy = EnemyComponent(
-      position: Vector2(enemyDef.x, enemyDef.y),
-      size: enemyDef.isBoss ? Vector2(56, 64) : Vector2(40, 48),
+      position: spawnPosition,
+      size: enemySize,
       definition: scaled,
       player: player,
       canMoveTo: _canEnemyMoveTo,
@@ -638,20 +652,31 @@ class WorldMapManager extends Component {
   }
 
   EnemyDefinition _scaledEnemy(EnemyDefinition baseEnemy) {
-    final offset = -1 + math.Random().nextInt(3);
-    final enemyLevel = math.max(1, controller.level + offset);
-    final mul = 1 + ((enemyLevel - 1) * 0.12);
+    final rand = math.Random();
+    final deltaRange = baseEnemy.isBoss ? 2 : 1;
+    final rawOffset = rand.nextInt(deltaRange * 2 + 1) - deltaRange;
+    final target = controller.level + rawOffset;
+    final minLevel = math.max(1, controller.level - 2);
+    final maxLevel = controller.level + 2;
+    final enemyLevel = target.clamp(minLevel, maxLevel);
+    final isBoss = baseEnemy.isBoss;
+    final growth = isBoss ? 0.17 : 0.1;
+    final defenseGrowth = isBoss ? 0.12 : 0.08;
+    final expGrowth = isBoss ? 0.22 : 0.14;
+    final mul = 1 + ((enemyLevel - 1) * growth);
+    final hpMul = isBoss ? (mul * 1.35) : mul;
+    final atkMul = isBoss ? (mul * 1.2) : mul;
     return EnemyDefinition(
       id: baseEnemy.id,
       name: '${baseEnemy.name} Lv.$enemyLevel',
-      maxHp: (baseEnemy.maxHp * mul).round(),
-      attack: (baseEnemy.attack * mul).round(),
-      defense: (baseEnemy.defense * (1 + (enemyLevel - 1) * 0.08)).round(),
+      maxHp: (baseEnemy.maxHp * hpMul).round(),
+      attack: (baseEnemy.attack * atkMul).round(),
+      defense: (baseEnemy.defense * (1 + (enemyLevel - 1) * defenseGrowth)).round(),
       moveSpeed: baseEnemy.moveSpeed,
       aggroRange: baseEnemy.aggroRange,
       attackRange: baseEnemy.attackRange,
       attackCooldown: baseEnemy.attackCooldown,
-      experienceReward: (baseEnemy.experienceReward * (1 + (enemyLevel - 1) * 0.16)).round(),
+      experienceReward: (baseEnemy.experienceReward * (1 + (enemyLevel - 1) * expGrowth)).round(),
       aggressive: baseEnemy.aggressive,
       spriteSheet: baseEnemy.spriteSheet,
       rewardItemId: baseEnemy.rewardItemId,
@@ -677,6 +702,64 @@ class WorldMapManager extends Component {
       unawaited(_spawnEnemy(enemyDef, baseEnemy));
     });
     _pendingRespawns.add(_PendingRespawn(timer));
+  }
+
+  Vector2? _resolveEnemySpawnPosition({
+    required Vector2 initial,
+    required bool isBoss,
+  }) {
+    final bodySize = isBoss ? const Size(36, 46) : const Size(20, 30);
+    Rect bodyAt(Vector2 pos) => Rect.fromLTWH(
+          pos.x + 10,
+          pos.y + 14,
+          bodySize.width,
+          bodySize.height,
+        );
+
+    final initialRect = bodyAt(initial);
+    if (canMoveTo(initialRect) && !_isSpawnOverlapping(initialRect)) {
+      return initial;
+    }
+
+    final offsets = <Vector2>[];
+    for (var ring = 1; ring <= 4; ring += 1) {
+      final r = ring * 16.0;
+      offsets.addAll([
+        Vector2(r, 0),
+        Vector2(-r, 0),
+        Vector2(0, r),
+        Vector2(0, -r),
+        Vector2(r, r),
+        Vector2(-r, r),
+        Vector2(r, -r),
+        Vector2(-r, -r),
+      ]);
+    }
+
+    for (final offset in offsets) {
+      final candidate = initial + offset;
+      final rect = bodyAt(candidate);
+      if (!canMoveTo(rect) || _isSpawnOverlapping(rect)) {
+        continue;
+      }
+      return candidate;
+    }
+    return null;
+  }
+
+  bool _isSpawnOverlapping(Rect rect) {
+    if (rect.overlaps(player.bodyRect.inflate(8))) {
+      return true;
+    }
+    for (final enemy in _enemies) {
+      if (!enemy.isMounted) {
+        continue;
+      }
+      if (enemy.bodyRect.inflate(4).overlaps(rect)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   List<Vector2> _findEnemyPath(Rect fromBodyRect, Rect targetBodyRect) {

@@ -18,6 +18,7 @@ class GameStateController extends ChangeNotifier {
   double transitionOpacity = 1;
   String currentMapId = 'village';
   String currentSpawnId = 'village_square';
+  String playerName = 'Kennie';
   double playerX = 608;
   double playerY = 544;
   int level = 1;
@@ -142,6 +143,7 @@ class GameStateController extends ChangeNotifier {
     activeBattle = null;
     currentMapId = 'village';
     currentSpawnId = 'village_square';
+    playerName = 'Kennie';
     playerX = 608;
     playerY = 544;
     level = 1;
@@ -190,6 +192,7 @@ class GameStateController extends ChangeNotifier {
 
   Future<void> saveGame() async {
     final snapshot = GameSnapshot(
+      playerName: playerName,
       currentMapId: currentMapId,
       currentSpawnId: currentSpawnId,
       playerX: playerX,
@@ -224,6 +227,7 @@ class GameStateController extends ChangeNotifier {
   }
 
   void _applySnapshot(GameSnapshot snapshot) {
+    playerName = snapshot.playerName;
     currentMapId = snapshot.currentMapId;
     currentSpawnId = snapshot.currentSpawnId;
     playerX = snapshot.playerX;

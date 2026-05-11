@@ -176,14 +176,14 @@ const Map<String, EnemyDefinition> enemyCatalog = {
   'goblin_chief': EnemyDefinition(
     id: 'goblin_chief',
     name: '迷霧統御者',
-    maxHp: 58,
-    attack: 18,
-    defense: 6,
-    moveSpeed: 88,
-    aggroRange: 196,
-    attackRange: 36,
-    attackCooldown: 0.9,
-    experienceReward: 40,
+    maxHp: 86,
+    attack: 24,
+    defense: 11,
+    moveSpeed: 92,
+    aggroRange: 214,
+    attackRange: 40,
+    attackCooldown: 0.78,
+    experienceReward: 72,
     aggressive: true,
     spriteSheet: 'enemy/goblin_run_right.png',
     rewardItemId: 'potion',
@@ -833,6 +833,7 @@ class PlayerStats {
 
 class GameSnapshot {
   const GameSnapshot({
+    required this.playerName,
     required this.currentMapId,
     required this.currentSpawnId,
     required this.playerX,
@@ -847,6 +848,7 @@ class GameSnapshot {
     required this.stats,
   });
 
+  final String playerName;
   final String currentMapId;
   final String currentSpawnId;
   final double playerX;
@@ -861,6 +863,7 @@ class GameSnapshot {
   final PlayerStats stats;
 
   Map<String, dynamic> toJson() => {
+      'playerName': playerName,
         'currentMapId': currentMapId,
         'currentSpawnId': currentSpawnId,
         'playerX': playerX,
@@ -877,6 +880,7 @@ class GameSnapshot {
 
   factory GameSnapshot.fromJson(Map<String, dynamic> json) {
     return GameSnapshot(
+      playerName: json['playerName'] as String? ?? 'Kennie',
       currentMapId: json['currentMapId'] as String,
       currentSpawnId: json['currentSpawnId'] as String,
       playerX: (json['playerX'] as num).toDouble(),
