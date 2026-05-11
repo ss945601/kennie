@@ -135,7 +135,7 @@ class WorldMapManager extends Component {
     }
     await _sceneRoot.add(
       PlayerAttackEffect(
-        facing: player.facing,
+        direction: player.aimDirection,
         position: player.attackEffectOrigin,
       ),
     );
@@ -177,7 +177,7 @@ class WorldMapManager extends Component {
 
     await _sceneRoot.add(
       PlayerFireballEffect(
-        facing: player.facing,
+        direction: player.aimDirection,
         position: player.fireballOrigin,
         canTravelTo: canMoveTo,
         findEnemyHit: (targetRect) {

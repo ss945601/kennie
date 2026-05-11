@@ -22,6 +22,7 @@ class PlayerComponent extends PositionComponent {
   final double fireballCooldown = 0.72;
   Vector2 movement = Vector2.zero();
   FacingDirection facing = FacingDirection.down;
+  Vector2 _aimDirection = Vector2(0, 1);
   late final SpriteAnimationGroupComponent<_PlayerVisualState> _sprite;
   double _attackCooldownRemaining = 0;
   double _fireballCooldownRemaining = 0;
@@ -65,22 +66,17 @@ class PlayerComponent extends PositionComponent {
 
   Vector2 get visualCenter => Vector2(position.x + size.x / 2, position.y + size.y / 2);
 
-  Vector2 get facingVector => switch (facing) {
-        FacingDirection.up => Vector2(0, -1),
-        FacingDirection.down => Vector2(0, 1),
-        FacingDirection.left => Vector2(-1, 0),
-        FacingDirection.right => Vector2(1, 0),
-      };
+  Vector2 get aimDirection => _aimDirection.clone();
+
+  Vector2 get facingVector => aimDirection;
 
   Vector2 get attackEffectOrigin {
     final center = bodyRect.center;
     const distance = 10.0;
-    return switch (facing) {
-      FacingDirection.up => Vector2(center.dx, center.dy - distance),
-      FacingDirection.down => Vector2(center.dx, center.dy + distance),
-      FacingDirection.left => Vector2(center.dx - distance, center.dy),
-      FacingDirection.right => Vector2(center.dx + distance, center.dy),
-    };
+    return Vector2(
+      center.dx + facingVector.x * distance,
+      center.dy + facingVector.y * distance,
+    );
   }
 
   Vector2 get fireballOrigin {
@@ -93,33 +89,31 @@ class PlayerComponent extends PositionComponent {
   }
 
   Rect get interactionProbe {
-    const distance = 16.0;
-    final body = bodyRect;
-    switch (facing) {
-      case FacingDirection.up:
-        return Rect.fromLTWH(body.left, body.top - distance, body.width, distance + 8);
-      case FacingDirection.down:
-        return Rect.fromLTWH(body.left, body.bottom - 8, body.width, distance + 8);
-      case FacingDirection.left:
-        return Rect.fromLTWH(body.left - distance, body.top + 4, distance + 8, body.height - 8);
-      case FacingDirection.right:
-        return Rect.fromLTWH(body.right - 8, body.top + 4, distance + 8, body.height - 8);
-    }
+    const forwardDistance = 18.0;
+    final center = bodyRect.center;
+    final probeCenter = Offset(
+      center.dx + facingVector.x * forwardDistance,
+      center.dy + facingVector.y * forwardDistance,
+    );
+    return Rect.fromCenter(
+      center: probeCenter,
+      width: 28,
+      height: 28,
+    );
   }
 
   Rect get attackHitbox {
-    const distance = 28.0;
-    final body = bodyRect;
-    switch (facing) {
-      case FacingDirection.up:
-        return Rect.fromLTWH(body.left - 4, body.top - distance, body.width + 8, distance + 4);
-      case FacingDirection.down:
-        return Rect.fromLTWH(body.left - 4, body.bottom - 4, body.width + 8, distance + 4);
-      case FacingDirection.left:
-        return Rect.fromLTWH(body.left - distance, body.top - 2, distance + 4, body.height + 4);
-      case FacingDirection.right:
-        return Rect.fromLTWH(body.right - 4, body.top - 2, distance + 4, body.height + 4);
-    }
+    const forwardDistance = 24.0;
+    final center = bodyRect.center;
+    final hitCenter = Offset(
+      center.dx + facingVector.x * forwardDistance,
+      center.dy + facingVector.y * forwardDistance,
+    );
+    return Rect.fromCenter(
+      center: hitCenter,
+      width: 34,
+      height: 34,
+    );
   }
 
   bool get isAttackActive => _attackWindowRemaining > 0;
@@ -177,14 +171,9 @@ class PlayerComponent extends PositionComponent {
       movement.normalize();
     }
 
-    if (movement.x < 0 && movement.x.abs() >= movement.y.abs()) {
-      facing = FacingDirection.left;
-    } else if (movement.x > 0 && movement.x.abs() >= movement.y.abs()) {
-      facing = FacingDirection.right;
-    } else if (movement.y < 0) {
-      facing = FacingDirection.up;
-    } else if (movement.y > 0) {
-      facing = FacingDirection.down;
+    if (movement != Vector2.zero()) {
+      _aimDirection = movement.normalized();
+      facing = _vectorToFacing(_aimDirection);
     }
   }
 
@@ -226,7 +215,8 @@ class PlayerComponent extends PositionComponent {
       return;
     }
     final running = movement != Vector2.zero() && !_game.controller.isFieldInputLocked;
-    _sprite.current = switch ((running, facing)) {
+    final visualFacing = _visualFacing(_aimDirection);
+    _sprite.current = switch ((running, visualFacing)) {
       (false, FacingDirection.up) => _PlayerVisualState.idleUp,
       (false, FacingDirection.down) => _PlayerVisualState.idleDown,
       (false, FacingDirection.left) => _PlayerVisualState.idleLeft,
@@ -235,7 +225,34 @@ class PlayerComponent extends PositionComponent {
       (true, FacingDirection.down) => _PlayerVisualState.runDown,
       (true, FacingDirection.left) => _PlayerVisualState.runLeft,
       (true, FacingDirection.right) => _PlayerVisualState.runRight,
+      (_, FacingDirection.upRight) => _PlayerVisualState.idleUp,
+      (_, FacingDirection.downRight) => _PlayerVisualState.idleRight,
+      (_, FacingDirection.downLeft) => _PlayerVisualState.idleLeft,
+      (_, FacingDirection.upLeft) => _PlayerVisualState.idleUp,
     };
+  }
+
+  FacingDirection _vectorToFacing(Vector2 direction) {
+    final angle = direction.screenAngle();
+    final normalized = (angle + 6.283185307179586) % 6.283185307179586;
+    final octant = ((normalized + 0.39269908169872414) / 0.7853981633974483).floor() % 8;
+    return switch (octant) {
+      0 => FacingDirection.right,
+      1 => FacingDirection.downRight,
+      2 => FacingDirection.down,
+      3 => FacingDirection.downLeft,
+      4 => FacingDirection.left,
+      5 => FacingDirection.upLeft,
+      6 => FacingDirection.up,
+      _ => FacingDirection.upRight,
+    };
+  }
+
+  FacingDirection _visualFacing(Vector2 direction) {
+    if (direction.x.abs() >= direction.y.abs()) {
+      return direction.x >= 0 ? FacingDirection.right : FacingDirection.left;
+    }
+    return direction.y >= 0 ? FacingDirection.down : FacingDirection.up;
   }
 
   void _syncPriority() {

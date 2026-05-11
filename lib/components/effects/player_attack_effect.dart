@@ -1,10 +1,8 @@
 import 'package:flame/components.dart';
 
-import '../../state/models/game_models.dart';
-
 class PlayerAttackEffect extends PositionComponent {
   PlayerAttackEffect({
-    required this.facing,
+    required this.direction,
     required Vector2 position,
   }) : super(
           position: position,
@@ -13,7 +11,7 @@ class PlayerAttackEffect extends PositionComponent {
           priority: 2500,
         );
 
-  final FacingDirection facing;
+  final Vector2 direction;
 
   @override
   Future<void> onLoad() async {
@@ -36,10 +34,14 @@ class PlayerAttackEffect extends PositionComponent {
     await add(slash);
   }
 
-  String get _assetPath => switch (facing) {
-        FacingDirection.up => 'player/attack_effect_top.png',
-        FacingDirection.down => 'player/attack_effect_bottom.png',
-        FacingDirection.left => 'player/attack_effect_left.png',
-        FacingDirection.right => 'player/attack_effect_right.png',
-      };
+  String get _assetPath {
+    if (direction.x.abs() >= direction.y.abs()) {
+      return direction.x >= 0
+          ? 'player/attack_effect_right.png'
+          : 'player/attack_effect_left.png';
+    }
+    return direction.y >= 0
+        ? 'player/attack_effect_bottom.png'
+        : 'player/attack_effect_top.png';
+  }
 }

@@ -3,11 +3,10 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../components/actors/enemy_component.dart';
-import '../../state/models/game_models.dart';
 
 class PlayerFireballEffect extends PositionComponent {
   PlayerFireballEffect({
-    required this.facing,
+    required this.direction,
     required Vector2 position,
     required this.canTravelTo,
     required this.findEnemyHit,
@@ -19,7 +18,7 @@ class PlayerFireballEffect extends PositionComponent {
           priority: 2520,
         );
 
-  final FacingDirection facing;
+  final Vector2 direction;
   final bool Function(Rect targetRect) canTravelTo;
   final EnemyComponent? Function(Rect targetRect) findEnemyHit;
   final void Function(EnemyComponent enemy) onEnemyHit;
@@ -29,19 +28,18 @@ class PlayerFireballEffect extends PositionComponent {
   double _traveledDistance = 0;
   bool _resolved = false;
 
-  Vector2 get _direction => switch (facing) {
-        FacingDirection.up => Vector2(0, -1),
-        FacingDirection.down => Vector2(0, 1),
-        FacingDirection.left => Vector2(-1, 0),
-        FacingDirection.right => Vector2(1, 0),
-      };
+  Vector2 get _direction => direction.normalized();
 
-  String get _assetPath => switch (facing) {
-        FacingDirection.up => 'player/fireball_top.png',
-        FacingDirection.down => 'player/fireball_bottom.png',
-        FacingDirection.left => 'player/fireball_left.png',
-        FacingDirection.right => 'player/fireball_right.png',
-      };
+  String get _assetPath {
+    if (direction.x.abs() >= direction.y.abs()) {
+      return direction.x >= 0
+          ? 'player/fireball_right.png'
+          : 'player/fireball_left.png';
+    }
+    return direction.y >= 0
+        ? 'player/fireball_bottom.png'
+        : 'player/fireball_top.png';
+  }
 
   @override
   Future<void> onLoad() async {

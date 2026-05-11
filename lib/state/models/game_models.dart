@@ -96,7 +96,16 @@ const Map<String, EnemyDefinition> enemyCatalog = {
   ),
 };
 
-enum FacingDirection { up, down, left, right }
+enum FacingDirection {
+  up,
+  upRight,
+  right,
+  downRight,
+  down,
+  downLeft,
+  left,
+  upLeft,
+}
 
 enum ItemType { consumable, weapon, armor, keyItem }
 
