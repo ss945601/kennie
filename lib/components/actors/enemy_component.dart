@@ -55,16 +55,42 @@ class EnemyComponent extends PositionComponent {
     _currentHp = definition.maxHp;
     final usesCharacterEnemySheet =
         definition.spriteSheet.startsWith('characters/Enemy/');
+    final usesBossSheet =
+        definition.spriteSheet.startsWith('characters/Boss/');
+    late final SpriteAnimationData animData;
+    if (usesBossSheet) {
+      // Boss 01.png: 288×384, 3 cols × 4 rows, 96×96 per frame.
+      // Use bottom row (demon lord) at srcPosition y=288.
+      animData = SpriteAnimationData([
+        SpriteAnimationFrameData(
+          srcPosition: Vector2(0, 288),
+          srcSize: Vector2(96, 96),
+          stepTime: 0.15,
+        ),
+        SpriteAnimationFrameData(
+          srcPosition: Vector2(96, 288),
+          srcSize: Vector2(96, 96),
+          stepTime: 0.15,
+        ),
+        SpriteAnimationFrameData(
+          srcPosition: Vector2(192, 288),
+          srcSize: Vector2(96, 96),
+          stepTime: 0.15,
+        ),
+      ]);
+    } else {
+      animData = SpriteAnimationData.sequenced(
+        amount: usesCharacterEnemySheet ? 3 : 6,
+        stepTime: 0.12,
+        textureSize: usesCharacterEnemySheet
+            ? Vector2.all(32)
+            : Vector2.all(16),
+      );
+    }
     _sprite = SpriteAnimationComponent(
       animation: await SpriteAnimation.load(
         definition.spriteSheet,
-        SpriteAnimationData.sequenced(
-          amount: usesCharacterEnemySheet ? 3 : 6,
-          stepTime: 0.12,
-          textureSize: usesCharacterEnemySheet
-              ? Vector2.all(32)
-              : Vector2.all(16),
-        ),
+        animData,
       ),
       size: size,
       anchor: Anchor.topLeft,

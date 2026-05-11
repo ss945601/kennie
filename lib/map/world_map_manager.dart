@@ -58,6 +58,7 @@ class WorldMapManager extends Component {
   @override
   Future<void> onLoad() async {
     await add(_sceneRoot);
+    controller.onNodeFlagSet = (key) => unawaited(_spawnEnemiesUnlockedByFlag(key));
   }
 
   Future<void> loadMap(
@@ -1203,6 +1204,73 @@ class WorldMapManager extends Component {
         );
       case 'elder':
       default:
+        if (controller.flag('report_to_elder_prompted')) {
+          return DialogTree(
+            startNodeId: 'reveal_1',
+            nodes: {
+              'reveal_1': const DialogNode(
+                id: 'reveal_1',
+                speaker: '長老',
+                text: '你回來了啊……而且真的替村子掃除了迷霧中的魔王。呵呵……哈哈哈哈哈！',
+                nextNodeId: 'reveal_2',
+              ),
+              'reveal_2': const DialogNode(
+                id: 'reveal_2',
+                speaker: '長老',
+                text: '你以為自己救了所有人嗎？太天真了。就在你被困在迷霧森林、拼命尋找羅盤的這段時間裡，我已經將整個村莊獻給了真正的大魔王。',
+                nextNodeId: 'reveal_3',
+              ),
+              'reveal_3': const DialogNode(
+                id: 'reveal_3',
+                speaker: '長老',
+                text: '沒錯，商人、斥候、還有那些曾經向你求助的人，他們的靈魂，全都成了契約的一部分。',
+                nextNodeId: 'reveal_4',
+              ),
+              'reveal_4': const DialogNode(
+                id: 'reveal_4',
+                speaker: '長老',
+                text: '你一定很想問我為什麼這麼做吧？因為這個腐朽又無能的世界，從來沒有把我的兒子還給我。',
+                nextNodeId: 'reveal_5',
+              ),
+              'reveal_5': const DialogNode(
+                id: 'reveal_5',
+                speaker: '長老',
+                text: '所以我向魔王低頭，我用整座村子的生命作為代價，只為換回一次讓他重返人世的機會。',
+                nextNodeId: 'reveal_6',
+              ),
+              'reveal_6': const DialogNode(
+                id: 'reveal_6',
+                speaker: '長老',
+                text: '而現在，契約還差最後一步。',
+                nextNodeId: 'reveal_7',
+              ),
+              'reveal_7': const DialogNode(
+                id: 'reveal_7',
+                speaker: '長老',
+                text: '那就是你。',
+                nextNodeId: 'reveal_8',
+              ),
+              'reveal_8': const DialogNode(
+                id: 'reveal_8',
+                speaker: '長老',
+                text: '你的到來、你的奮戰、你的勝利，全都只是我儀式的一部分。你不是英雄，你只是被我引導到這裡的祭品罷了！',
+                nextNodeId: 'reveal_9',
+              ),
+              'reveal_9': const DialogNode(
+                id: 'reveal_9',
+                speaker: '長老',
+                text: '來吧，讓你親眼見識我捨棄人類之身後，真正獲得的力量！',
+                nextNodeId: 'reveal_final',
+              ),
+              'reveal_final': const DialogNode(
+                id: 'reveal_final',
+                speaker: '長老',
+                text: '大魔王，降臨！',
+                setFlagOnEnter: 'elder_boss_triggered',
+              ),
+            },
+          );
+        }
         final hasKey = controller.flag('has_key_01');
         final defeatedChief = controller.flag('beat_goblin_chief');
         return DialogTree(

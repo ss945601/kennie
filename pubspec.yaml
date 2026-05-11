@@ -38,6 +38,7 @@ flutter:
     - assets/images/characters/Enemy/
     - assets/images/characters/Male/
     - assets/images/characters/Female/
+    - assets/images/characters/Boss/
     - assets/images/tiled/punnyworld/
     - assets/images/items/
     - assets/images/tile/

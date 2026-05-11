@@ -39,6 +39,7 @@ class RpgGame extends BonfireWithCollision {
     );
     await world.add(worldMapManager);
     controller.addListener(_syncOverlays);
+    controller.onLoadGameRequested = () => unawaited(loadGame());
     camera.viewfinder.zoom = 1.2;
     await controller.initialize();
     _syncOverlays();

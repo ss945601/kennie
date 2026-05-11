@@ -156,6 +156,7 @@ const mapDefinitions = <String, MapDefinition>{
         y: 192,
         spritePath: 'characters/Male/Male 18-1.png',
         idleFrames: 3,
+        hiddenWhenFlag: 'beat_elder_boss',
       ),
       SceneNpcDefinition(
         id: 'merchant',
@@ -164,6 +165,7 @@ const mapDefinitions = <String, MapDefinition>{
         y: 336,
         spritePath: 'characters/Female/Female 23-1.png',
         idleFrames: 3,
+        hiddenWhenFlag: 'report_to_elder_prompted',
       ),
       SceneNpcDefinition(
         id: 'scout',
@@ -172,6 +174,7 @@ const mapDefinitions = <String, MapDefinition>{
         y: 320,
         spritePath: 'characters/Female/Female 24-1.png',
         idleFrames: 3,
+        hiddenWhenFlag: 'report_to_elder_prompted',
       ),
     ],
     enemies: [
@@ -206,6 +209,17 @@ const mapDefinitions = <String, MapDefinition>{
         x: 288,
         y: 416,
         hiddenWhenFlag: 'beat_bat_02',
+      ),
+      SceneEnemyDefinition(
+        id: 'elder_demon_lord',
+        enemyId: 'elder_demon_lord',
+        label: '大魔王',
+        x: 320,
+        y: 192,
+        showWhenFlag: 'elder_boss_triggered',
+        hiddenWhenFlag: 'beat_elder_boss',
+        canRespawn: false,
+        isBoss: true,
       ),
     ],
     chests: [

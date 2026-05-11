@@ -54,6 +54,15 @@ class GameStateController extends ChangeNotifier {
   EquipmentPickupEvent? latestEquipmentPickup;
   int _equipmentPickupSerial = 0;
 
+  /// Called whenever a dialog node sets a flag via [setFlagOnEnter].
+  /// WorldMapManager registers this to trigger enemy spawns.
+  void Function(String flagKey)? onNodeFlagSet;
+
+  /// Called when the player confirms to load save after dying.
+  void Function()? onLoadGameRequested;
+
+  bool _pendingGameOver = false;
+
   int get equipmentPickupSerial => _equipmentPickupSerial;
 
   Future<void> initialize() async {
@@ -148,6 +157,51 @@ class GameStateController extends ChangeNotifier {
       },
     );
     startDialog(dialog);
+  }
+
+  void _showReportToElderDialog() {
+    final dialog = DialogTree(
+      startNodeId: 'start',
+      nodes: {
+        'start': const DialogNode(
+          id: 'start',
+          speaker: '系統',
+          text: '你已取得迷霧羅盤並消滅了迷霧魔王。快回去向長老報備。',
+        ),
+      },
+    );
+    startDialog(dialog);
+  }
+
+  void _showEndingDialog() {
+    final dialog = DialogTree(
+      startNodeId: 'ending',
+      nodes: {
+        'ending': const DialogNode(
+          id: 'ending',
+          speaker: '系統',
+          text: '你打敗了大魔王跟長老，因為你的出現，村莊的人都死光光了～可喜可賀',
+        ),
+      },
+    );
+    startDialog(dialog);
+  }
+
+  void _showDeathDialog() {
+    startDialog(const DialogTree(
+      startNodeId: 'death',
+      nodes: {
+        'death': DialogNode(
+          id: 'death',
+          speaker: '系統',
+          text: '你死了......是否讀檔重來？',
+          choices: [
+            DialogChoice(label: '讀檔重來', actionKey: 'death_load_save'),
+            DialogChoice(label: '返回選單', actionKey: 'death_return_menu'),
+          ],
+        ),
+      },
+    ));
   }
 
   bool get isFieldInputLocked =>
@@ -400,8 +454,8 @@ class GameStateController extends ChangeNotifier {
     final remainingHp = max(0, baseStats.hp - damage);
     baseStats = baseStats.copyWith(hp: remainingHp);
     if (remainingHp == 0) {
-      baseStats = baseStats.copyWith(hp: max(1, baseStats.maxHp ~/ 2));
-      hudMessage = '${source ?? '敵人'} 擊倒了你，你勉強撤回安全位置。';
+      baseStats = baseStats.copyWith(hp: 1);
+      _showDeathDialog();
       notifyListeners();
       return true;
     }
@@ -481,10 +535,17 @@ class GameStateController extends ChangeNotifier {
     if (defeatedFlag != null) {
       storyFlags[defeatedFlag] = true;
     }
-    if (enemy.isBoss) {
+    if (enemy.id == 'goblin_chief') {
       addItem('forest_emblem', markObtained: true);
       storyFlags['beat_forest_boss'] = true;
       _syncEscapeFlag();
+      if (!flag('report_to_elder_prompted')) {
+        storyFlags['report_to_elder_prompted'] = true;
+        _showReportToElderDialog();
+      }
+    } else if (enemy.id == 'elder_demon_lord') {
+      _pendingGameOver = true;
+      _showEndingDialog();
     }
     gainExperience(enemy.experienceReward);
     final prefix = messagePrefix == null ? '' : '$messagePrefix ';
@@ -597,11 +658,14 @@ class GameStateController extends ChangeNotifier {
       nextLevelExperience = (nextLevelExperience * 1.35).round();
       baseStats = baseStats.copyWith(
         maxHp: baseStats.maxHp + 10,
-        hp: baseStats.maxHp + 10,
         maxMp: baseStats.maxMp + 5,
-        mp: baseStats.maxMp + 5,
         attack: baseStats.attack + 3,
         defense: baseStats.defense + 2,
+      );
+      // Restore HP/MP to full after level up (using new effective max).
+      baseStats = baseStats.copyWith(
+        hp: effectiveStats.maxHp,
+        mp: effectiveStats.maxMp,
       );
       hudMessage = '升級！你已到達 Lv.$level。';
       if (level >= 6 && !flag('skill_flamethrower_unlocked')) {
@@ -642,6 +706,11 @@ class GameStateController extends ChangeNotifier {
     final nextNodeId = currentNode.nextNodeId;
     if (nextNodeId == null) {
       activeDialog = null;
+      if (_pendingGameOver) {
+        _pendingGameOver = false;
+        returnToTitleMenu();
+        return;
+      }
       hudMessage = '對話結束。';
       notifyListeners();
       return;
@@ -714,6 +783,13 @@ class GameStateController extends ChangeNotifier {
         break;
       case 'toggle_fog_goal_hint':
         hudMessage = '迷霧出口會把你傳回來，先擊敗迷霧統御者並取得迷霧羅盤。';
+        break;
+      case 'death_load_save':
+        activeDialog = null;
+        onLoadGameRequested?.call();
+        break;
+      case 'death_return_menu':
+        returnToTitleMenu();
         break;
       default:
         break;
@@ -797,6 +873,7 @@ class GameStateController extends ChangeNotifier {
   void _applyNodeSideEffects(DialogNode node) {
     if (node.setFlagOnEnter case final key?) {
       storyFlags[key] = true;
+      onNodeFlagSet?.call(key);
     }
   }
 
@@ -879,8 +956,8 @@ class GameStateController extends ChangeNotifier {
 
     if (remainingPlayerHp == 0) {
       activeBattle = null;
-      baseStats = baseStats.copyWith(hp: baseStats.maxHp ~/ 2);
-      hudMessage = '你被擊倒了，回到安全地點恢復。';
+      baseStats = baseStats.copyWith(hp: 1);
+      _showDeathDialog();
       notifyListeners();
       return;
     }
