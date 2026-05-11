@@ -238,37 +238,82 @@ class WorldMapManager extends Component {
     final shotDirection = (direction != null && direction.length2 > 0)
         ? direction.normalized()
         : player.aimDirection;
+    final fireMode = controller.level >= 12
+        ? _FireballMode.inferno
+        : (controller.level >= 6 ? _FireballMode.flamethrower : _FireballMode.basic);
     if (controller.baseStats.mp < mpCost) {
-      controller.setHudMessage('MP 不足，無法施放火球。');
+      final skillName = switch (fireMode) {
+        _FireballMode.basic => '火球',
+        _FireballMode.flamethrower => '噴射火焰',
+        _FireballMode.inferno => '大字爆炎',
+      };
+      controller.setHudMessage('MP 不足，無法施放$skillName。');
       return;
     }
     if (!player.tryCastFireball()) {
       return;
     }
     if (!controller.spendMp(mpCost, silent: true)) {
-      controller.setHudMessage('MP 不足，無法施放火球。');
+      final skillName = switch (fireMode) {
+        _FireballMode.basic => '火球',
+        _FireballMode.flamethrower => '噴射火焰',
+        _FireballMode.inferno => '大字爆炎',
+      };
+      controller.setHudMessage('MP 不足，無法施放$skillName。');
       return;
     }
 
-    await _sceneRoot.add(
-      PlayerFireballEffect(
-        direction: shotDirection,
-        position: player.fireballOrigin,
-        canTravelTo: canMoveTo,
-        findEnemyHit: (targetRect) {
-          for (final enemy in _enemies) {
-            if (enemy.isMounted && enemy.bodyRect.overlaps(targetRect)) {
-              return enemy;
+    final directions = switch (fireMode) {
+      _FireballMode.basic => <Vector2>[shotDirection],
+      _FireballMode.flamethrower => <Vector2>[
+          _rotate(shotDirection, -0.24),
+          shotDirection,
+          _rotate(shotDirection, 0.24),
+        ],
+      _FireballMode.inferno => List<Vector2>.generate(
+          12,
+          (index) {
+            final angle = (math.pi * 2 * index) / 12;
+            return Vector2(math.cos(angle), math.sin(angle));
+          },
+        ),
+    };
+
+    for (final dir in directions) {
+      await _sceneRoot.add(
+        PlayerFireballEffect(
+          direction: dir,
+          position: player.fireballOrigin,
+          canTravelTo: canMoveTo,
+          findEnemyHit: (targetRect) {
+            for (final enemy in _enemies) {
+              if (enemy.isMounted && enemy.bodyRect.overlaps(targetRect)) {
+                return enemy;
+              }
             }
-          }
-          return null;
-        },
-        onEnemyHit: (enemy, hitDirection) =>
-            unawaited(_handleFireballHit(enemy, hitDirection)),
-      ),
-    );
+            return null;
+          },
+          onEnemyHit: (enemy, hitDirection) =>
+              unawaited(_handleFireballHit(enemy, hitDirection)),
+        ),
+      );
+    }
     unawaited(AudioManager.instance.playFireBallSfx());
-    controller.setHudMessage('火球發射！消耗 $mpCost MP。');
+    final castMessage = switch (fireMode) {
+      _FireballMode.basic => '火球發射！消耗 $mpCost MP。',
+      _FireballMode.flamethrower => '噴射火焰！扇形三連發，消耗 $mpCost MP。',
+      _FireballMode.inferno => '大字爆炎！全向爆發，消耗 $mpCost MP。',
+    };
+    controller.setHudMessage(castMessage);
+  }
+
+  Vector2 _rotate(Vector2 direction, double radians) {
+    final cosA = math.cos(radians);
+    final sinA = math.sin(radians);
+    return Vector2(
+      direction.x * cosA - direction.y * sinA,
+      direction.x * sinA + direction.y * cosA,
+    ).normalized();
   }
 
   @override
@@ -1216,6 +1261,12 @@ class _PendingRespawn {
   const _PendingRespawn(this.timer);
 
   final dart_async.Timer timer;
+}
+
+enum _FireballMode {
+  basic,
+  flamethrower,
+  inferno,
 }
 
 class _PathCell {

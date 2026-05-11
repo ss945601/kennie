@@ -247,7 +247,7 @@ class _HudOverlayState extends State<HudOverlay> {
                           _RangedAimJoystick(
                             compact: ui.compact,
                             enabled: !controller.isFieldInputLocked,
-                            label: '火球',
+                            label: '技能',
                             onCast: (direction) {
                               unawaited(game.handleFireball(direction: direction));
                             },

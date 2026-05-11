@@ -136,6 +136,20 @@ class GameStateController extends ChangeNotifier {
     }
   }
 
+  void _showSkillUnlockDialog({required String skillName, required String description}) {
+    final dialog = DialogTree(
+      startNodeId: 'start',
+      nodes: {
+        'start': DialogNode(
+          id: 'start',
+          speaker: '系統',
+          text: '學會新技能：$skillName\n$description',
+        ),
+      },
+    );
+    startDialog(dialog);
+  }
+
   bool get isFieldInputLocked =>
       showTitleMenu ||
       isPauseMenuOpen ||
@@ -576,6 +590,7 @@ class GameStateController extends ChangeNotifier {
 
   void gainExperience(int amount) {
     experience += amount;
+    final unlockedMessages = <({String name, String description})>[];
     while (experience >= nextLevelExperience) {
       experience -= nextLevelExperience;
       level += 1;
@@ -589,6 +604,28 @@ class GameStateController extends ChangeNotifier {
         defense: baseStats.defense + 2,
       );
       hudMessage = '升級！你已到達 Lv.$level。';
+      if (level >= 6 && !flag('skill_flamethrower_unlocked')) {
+        storyFlags['skill_flamethrower_unlocked'] = true;
+        unlockedMessages.add((
+          name: '噴射火焰',
+          description: '火球術進化為扇形三連發。',
+        ));
+      }
+      if (level >= 12 && !flag('skill_inferno_unlocked')) {
+        storyFlags['skill_inferno_unlocked'] = true;
+        unlockedMessages.add((
+          name: '大字爆炎',
+          description: '噴射火焰再進化，向四周全面爆發火球。',
+        ));
+      }
+    }
+    if (unlockedMessages.isNotEmpty) {
+      final latest = unlockedMessages.last;
+      if (activeDialog == null && activeChestRewardDialog == null) {
+        _showSkillUnlockDialog(skillName: latest.name, description: latest.description);
+      } else {
+        hudMessage = '學會新技能：${latest.name}';
+      }
     }
     notifyListeners();
   }
