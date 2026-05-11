@@ -26,6 +26,7 @@ class RpgGame extends BonfireWithCollision {
   late final WorldMapManager worldMapManager;
   bool _isChangingScene = false;
   bool _wasOnTitleMenu = true;
+  bool _isEnginePausedForPauseMenu = false;
 
   @override
   Future<void> onLoad() async {
@@ -144,6 +145,28 @@ class RpgGame extends BonfireWithCollision {
     controller.togglePauseMenu();
   }
 
+  void _syncPauseState() {
+    final shouldPause = controller.isPauseMenuOpen;
+    if (shouldPause == _isEnginePausedForPauseMenu) {
+      return;
+    }
+
+    if (shouldPause) {
+      stopTouchMovement();
+      if (hero.isMounted) {
+        hero.updateMovementFromVector(
+          Vector2.zero(),
+          inputLocked: true,
+        );
+      }
+      pauseEngine();
+    } else {
+      resumeEngine();
+    }
+
+    _isEnginePausedForPauseMenu = shouldPause;
+  }
+
   Future<void> _runTransition(Future<void> Function() action) async {
     _isChangingScene = true;
     controller.setTransitionOpacity(1);
@@ -155,6 +178,7 @@ class RpgGame extends BonfireWithCollision {
   }
 
   void _syncOverlays() {
+    _syncPauseState();
     if (controller.showTitleMenu) {
       if (!_wasOnTitleMenu) {
         unawaited(AudioManager.instance.stopFieldBgm());
