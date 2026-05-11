@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
@@ -27,6 +29,11 @@ class PlayerComponent extends PositionComponent {
   double _attackCooldownRemaining = 0;
   double _fireballCooldownRemaining = 0;
   double _attackWindowRemaining = 0;
+  Vector2 _knockbackDirection = Vector2.zero();
+  double _knockbackRemaining = 0;
+  double _knockbackTotal = 0;
+  final double _knockbackMinSpeed = 92;
+  final double _knockbackMaxSpeed = 320;
 
   dynamic get _game => findGame();
 
@@ -189,6 +196,30 @@ class PlayerComponent extends PositionComponent {
     if (_attackWindowRemaining > 0) {
       _attackWindowRemaining = (_attackWindowRemaining - dt).clamp(0, 0.12);
     }
+
+    if (_knockbackRemaining > 0 && _knockbackDirection.length2 > 0) {
+      final progress = (_knockbackTotal <= 0)
+          ? 0.0
+          : (_knockbackRemaining / _knockbackTotal).clamp(0.0, 1.0);
+      final eased = progress * progress;
+      final speed = _knockbackMinSpeed +
+          (_knockbackMaxSpeed - _knockbackMinSpeed) * eased;
+      final step = math.min(speed * dt, _knockbackRemaining);
+      final delta = _knockbackDirection * step;
+      final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
+      if (_game.worldMapManager.canPlayerMoveTo(nextRect)) {
+        position += delta;
+        _knockbackRemaining -= step;
+      } else {
+        _knockbackRemaining = 0;
+      }
+      if (_knockbackRemaining <= 0.001) {
+        _knockbackRemaining = 0;
+        _knockbackTotal = 0;
+      }
+      _game.controller.setPlayerPosition(position.x, position.y);
+    }
+
     _syncAnimation();
     if (_game.controller.isFieldInputLocked || movement == Vector2.zero()) {
       _syncPriority();
@@ -197,7 +228,7 @@ class PlayerComponent extends PositionComponent {
 
     final delta = movement.normalized() * moveSpeed * dt;
     final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
-    if (_game.worldMapManager.canMoveTo(nextRect)) {
+    if (_game.worldMapManager.canPlayerMoveTo(nextRect)) {
       position += delta;
       _game.controller.setPlayerPosition(position.x, position.y);
     }
@@ -208,6 +239,15 @@ class PlayerComponent extends PositionComponent {
     position = targetPosition;
     _game.controller.setPlayerPosition(position.x, position.y);
     _syncPriority();
+  }
+
+  void applyKnockback(Vector2 direction, {double distance = 12}) {
+    if (distance <= 0 || direction.length2 == 0) {
+      return;
+    }
+    _knockbackDirection = direction.normalized();
+    _knockbackRemaining = (_knockbackRemaining + distance).clamp(0, 52);
+    _knockbackTotal = math.max(_knockbackTotal, _knockbackRemaining);
   }
 
   void _syncAnimation() {

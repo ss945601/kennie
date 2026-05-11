@@ -23,10 +23,11 @@ class EnemyComponent extends PositionComponent {
 
   final EnemyDefinition definition;
   final PlayerComponent player;
-  final bool Function(Rect targetRect) canMoveTo;
+  final bool Function(EnemyComponent enemy, Rect targetRect) canMoveTo;
   final List<Vector2> Function(Rect fromBodyRect, Rect targetBodyRect)
   findPath;
-  final Future<void> Function(EnemyComponent enemy) onAttackPlayer;
+  final Future<void> Function(EnemyComponent enemy, Vector2 attackDirection)
+  onAttackPlayer;
   final Future<void> Function(EnemyComponent enemy) onDefeated;
   final Vector2 _spawnPosition;
   late final int _maxHp;
@@ -37,6 +38,11 @@ class EnemyComponent extends PositionComponent {
   bool _facingLeft = false;
   final List<Vector2> _pathWaypoints = <Vector2>[];
   double _pathRefreshRemaining = 0;
+  Vector2 _knockbackDirection = Vector2.zero();
+  double _knockbackRemaining = 0;
+  double _knockbackTotal = 0;
+  final double _knockbackMinSpeed = 80;
+  final double _knockbackMaxSpeed = 270;
 
   Rect get bodyRect => Rect.fromLTWH(position.x + 10, position.y + 14, size.x - 20, size.y - 18);
   int get currentHp => _currentHp;
@@ -85,6 +91,29 @@ class EnemyComponent extends PositionComponent {
 
     final game = findGame();
     final locked = game is RpgGame && game.controller.isFieldInputLocked;
+    if (_knockbackRemaining > 0 && _knockbackDirection.length2 > 0) {
+      final progress = (_knockbackTotal <= 0)
+          ? 0.0
+          : (_knockbackRemaining / _knockbackTotal).clamp(0.0, 1.0);
+      final eased = progress * progress;
+      final speed = _knockbackMinSpeed +
+          (_knockbackMaxSpeed - _knockbackMinSpeed) * eased;
+      final step = math.min(speed * dt, _knockbackRemaining);
+      final delta = _knockbackDirection * step;
+      final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
+      if (canMoveTo(this, nextRect)) {
+        position += delta;
+        _knockbackRemaining -= step;
+      } else {
+        _knockbackRemaining = 0;
+      }
+      if (_knockbackRemaining <= 0.001) {
+        _knockbackRemaining = 0;
+        _knockbackTotal = 0;
+      }
+      _pathWaypoints.clear();
+      _pathRefreshRemaining = 0;
+    }
     if (!locked) {
       _updateCombatMovement(dt);
     }
@@ -93,18 +122,21 @@ class EnemyComponent extends PositionComponent {
   }
 
   void _updateCombatMovement(double dt) {
-    final targetOffset = player.position - position;
-    final distanceToPlayer = targetOffset.length;
+    final targetOffset = player.bodyRect.center - bodyRect.center;
+    final distanceToPlayer = targetOffset.distance;
     final shouldChase = _provoked || (definition.aggressive && distanceToPlayer <= definition.aggroRange);
 
     if (shouldChase) {
       _provoked = true;
-      if (distanceToPlayer <= definition.attackRange) {
+      final meleeReach = definition.attackRange +
+          (player.bodyRect.width + bodyRect.width) * 0.22;
+      final closeOverlap = bodyRect.inflate(10).overlaps(player.bodyRect);
+      if (distanceToPlayer <= meleeReach || closeOverlap) {
         _pathWaypoints.clear();
         _pathRefreshRemaining = 0;
         if (_attackCooldownRemaining <= 0) {
           _attackCooldownRemaining = definition.attackCooldown;
-          unawaited(onAttackPlayer(this));
+          unawaited(onAttackPlayer(this, _attackDirectionToPlayer()));
         }
         return;
       }
@@ -144,7 +176,7 @@ class EnemyComponent extends PositionComponent {
     _facingLeft = direction.x < 0;
     final delta = direction * speed * dt;
     final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
-    if (canMoveTo(nextRect)) {
+    if (canMoveTo(this, nextRect)) {
       position += delta;
     }
   }
@@ -162,8 +194,27 @@ class EnemyComponent extends PositionComponent {
     final step = math.min(maxStep, remaining);
     final delta = direction * step;
     final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
-    if (canMoveTo(nextRect)) {
+    if (canMoveTo(this, nextRect)) {
       position += delta;
     }
+  }
+
+  void applyKnockback(Vector2 direction, {double distance = 10}) {
+    if (distance <= 0 || direction.length2 == 0) {
+      return;
+    }
+    _knockbackDirection = direction.normalized();
+    _knockbackRemaining = (_knockbackRemaining + distance).clamp(0, 46);
+    _knockbackTotal = math.max(_knockbackTotal, _knockbackRemaining);
+  }
+
+  Vector2 _attackDirectionToPlayer() {
+    final from = bodyRect.center;
+    final to = player.bodyRect.center;
+    final direction = Vector2(to.dx - from.dx, to.dy - from.dy);
+    if (direction.length2 == 0) {
+      return _facingLeft ? Vector2(-1, 0) : Vector2(1, 0);
+    }
+    return direction.normalized();
   }
 }

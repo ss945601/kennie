@@ -8,6 +8,8 @@ import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';
 import '../components/effects/damage_number_effect.dart';
+import '../components/effects/enemy_attack_effect.dart';
+import '../components/effects/enemy_orb_projectile_effect.dart';
 import '../components/effects/player_attack_effect.dart';
 import '../components/effects/player_fireball_effect.dart';
 import '../components/objects/chest_component.dart';
@@ -36,6 +38,10 @@ class WorldMapManager extends Component {
   final List<EnemyComponent> _enemies = <EnemyComponent>[];
   final List<TeleportComponent> _teleports = <TeleportComponent>[];
   final Map<String, Vector2> _spawnPoints = <String, Vector2>{};
+    final Map<EnemyComponent, double> _contactDamageCooldown =
+      <EnemyComponent, double>{};
+    final Map<EnemyComponent, double> _enemySkillCooldown =
+      <EnemyComponent, double>{};
   static const double _enemyPathGrid = 16;
 
   Vector2 mapPixelSize = Vector2.zero();
@@ -62,6 +68,8 @@ class WorldMapManager extends Component {
     _enemies.clear();
     _teleports.clear();
     _spawnPoints.clear();
+    _contactDamageCooldown.clear();
+    _enemySkillCooldown.clear();
     _teleportLatch = false;
 
     mapPixelSize = Vector2(definition.sceneSize.x, definition.sceneSize.y);
@@ -113,6 +121,21 @@ class WorldMapManager extends Component {
     return !_collisionRects.any(targetRect.overlaps);
   }
 
+  bool canPlayerMoveTo(Rect targetRect) {
+    if (!canMoveTo(targetRect)) {
+      return false;
+    }
+    for (final enemy in _enemies) {
+      if (!enemy.isMounted) {
+        continue;
+      }
+      if (enemy.bodyRect.inflate(2).overlaps(targetRect)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<void> interactInFrontOfPlayer() async {
     final probe = player.interactionProbe;
     final candidates = _interactables
@@ -142,7 +165,7 @@ class WorldMapManager extends Component {
       ),
     );
     final hitEnemies = _enemies
-        .where((enemy) => enemy.bodyRect.overlaps(player.attackHitbox))
+        .where(_isEnemyInPlayerMeleeRange)
         .toList();
     if (hitEnemies.isEmpty) {
       controller.setHudMessage('你揮空了。');
@@ -151,6 +174,7 @@ class WorldMapManager extends Component {
 
     for (final enemy in hitEnemies) {
       final damage = controller.rollPlayerDamage(enemy.definition.defense);
+      enemy.applyKnockback(player.aimDirection, distance: 18);
       _showDamageNumber(
         position: _enemyDamagePosition(enemy),
         amount: damage,
@@ -161,6 +185,36 @@ class WorldMapManager extends Component {
         controller.setHudMessage('命中 ${enemy.definition.name}，造成 $damage 點傷害。');
       }
     }
+  }
+
+  bool _isEnemyInPlayerMeleeRange(EnemyComponent enemy) {
+    if (!enemy.isMounted) {
+      return false;
+    }
+
+    // Keep the directional hitbox, but give it side tolerance.
+    if (enemy.bodyRect.overlaps(player.attackHitbox.inflate(10))) {
+      return true;
+    }
+
+    final playerCenter = player.bodyRect.center;
+    final enemyCenter = enemy.bodyRect.center;
+    final toEnemy = Vector2(
+      enemyCenter.dx - playerCenter.dx,
+      enemyCenter.dy - playerCenter.dy,
+    );
+    final distance = toEnemy.length;
+    if (distance == 0) {
+      return true;
+    }
+
+    // Secondary fallback: nearby targets slightly off to the side should still connect.
+    if (distance > 54) {
+      return false;
+    }
+    final dirToEnemy = toEnemy / distance;
+    final facingDot = dirToEnemy.dot(player.aimDirection.normalized());
+    return facingDot >= -0.12;
   }
 
   Future<void> playerCastFireball() async {
@@ -190,7 +244,8 @@ class WorldMapManager extends Component {
           }
           return null;
         },
-        onEnemyHit: (enemy) => unawaited(_handleFireballHit(enemy)),
+        onEnemyHit: (enemy, hitDirection) =>
+            unawaited(_handleFireballHit(enemy, hitDirection)),
       ),
     );
     controller.setHudMessage('火球發射！消耗 $mpCost MP。');
@@ -199,6 +254,10 @@ class WorldMapManager extends Component {
   @override
   void update(double dt) {
     super.update(dt);
+    _tickCombatCooldowns(dt);
+    _applyTouchCollisionDamage();
+    _updateEnemySkills();
+
     final activeTeleport = _teleports.where(
       (teleport) => teleport.toAbsoluteRect().overlaps(player.bodyRect),
     );
@@ -238,37 +297,54 @@ class WorldMapManager extends Component {
     return true;
   }
 
-  bool _canEnemyMoveTo(Rect targetRect) {
-    if (targetRect.overlaps(player.bodyRect.inflate(6))) {
+  bool _canEnemyMoveTo(EnemyComponent movingEnemy, Rect targetRect) {
+    if (targetRect.overlaps(player.bodyRect.inflate(4))) {
       return false;
     }
-    return canMoveTo(targetRect);
+    if (!canMoveTo(targetRect)) {
+      return false;
+    }
+    for (final other in _enemies) {
+      if (!other.isMounted || identical(other, movingEnemy)) {
+        continue;
+      }
+      if (other.bodyRect.inflate(2).overlaps(targetRect)) {
+        return false;
+      }
+    }
+    return true;
   }
 
-  Future<void> _handleEnemyAttack(EnemyComponent enemy) async {
+  Future<void> _handleEnemyAttack(
+    EnemyComponent enemy,
+    Vector2 attackDirection,
+  ) async {
     final damage = controller.rollEnemyDamage(enemy.definition);
+    _spawnEnemyAttackEffect(_playerDamagePosition());
+    player.applyKnockback(attackDirection, distance: 22);
     _showDamageNumber(
       position: _playerDamagePosition(),
       amount: damage,
       isPlayerHit: true,
     );
-    final defeated = controller.applyPlayerDamage(
+    final defeated = _applyDamageToPlayer(
       damage,
       source: enemy.definition.name,
     );
     if (!defeated) {
       return;
     }
-    final safeSpawn =
-        _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
-    player.snapTo(safeSpawn);
   }
 
-  Future<void> _handleFireballHit(EnemyComponent enemy) async {
+  Future<void> _handleFireballHit(
+    EnemyComponent enemy,
+    Vector2 hitDirection,
+  ) async {
     if (!enemy.isMounted) {
       return;
     }
     final damage = controller.rollPlayerDamage(enemy.definition.defense) + 6;
+    enemy.applyKnockback(hitDirection, distance: 20);
     _showDamageNumber(
       position: _enemyDamagePosition(enemy),
       amount: damage,
@@ -303,6 +379,131 @@ class WorldMapManager extends Component {
         amount: amount,
         isPlayerHit: isPlayerHit,
         position: position,
+      ),
+    );
+  }
+
+  void _spawnEnemyAttackEffect(Vector2 position) {
+    _sceneRoot.add(EnemyAttackEffect(position: position));
+  }
+
+  bool _applyDamageToPlayer(int damage, {required String source}) {
+    final defeated = controller.applyPlayerDamage(
+      damage,
+      source: source,
+    );
+    if (defeated) {
+      final safeSpawn =
+          _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
+      player.snapTo(safeSpawn);
+    }
+    return defeated;
+  }
+
+  void _tickCombatCooldowns(double dt) {
+    _contactDamageCooldown.removeWhere((enemy, cooldown) {
+      if (!enemy.isMounted) {
+        return true;
+      }
+      final next = cooldown - dt;
+      if (next <= 0) {
+        return true;
+      }
+      _contactDamageCooldown[enemy] = next;
+      return false;
+    });
+
+    _enemySkillCooldown.removeWhere((enemy, cooldown) {
+      if (!enemy.isMounted) {
+        return true;
+      }
+      final next = cooldown - dt;
+      if (next <= 0) {
+        return true;
+      }
+      _enemySkillCooldown[enemy] = next;
+      return false;
+    });
+  }
+
+  void _applyTouchCollisionDamage() {
+    for (final enemy in _enemies) {
+      if (!enemy.isMounted) {
+        continue;
+      }
+      final onCooldown = (_contactDamageCooldown[enemy] ?? 0) > 0;
+      if (onCooldown) {
+        continue;
+      }
+      if (!enemy.bodyRect.overlaps(player.bodyRect.inflate(4))) {
+        continue;
+      }
+
+      final collisionDamage = math.max(1, (enemy.definition.attack * 0.32).round());
+      final pushDirection = Vector2(
+        player.bodyRect.center.dx - enemy.bodyRect.center.dx,
+        player.bodyRect.center.dy - enemy.bodyRect.center.dy,
+      );
+      player.applyKnockback(pushDirection, distance: 12);
+      _spawnEnemyAttackEffect(_playerDamagePosition());
+      _showDamageNumber(
+        position: _playerDamagePosition(),
+        amount: collisionDamage,
+        isPlayerHit: true,
+      );
+      _applyDamageToPlayer(collisionDamage, source: '${enemy.definition.name} 衝撞');
+      _contactDamageCooldown[enemy] = 0.65;
+    }
+  }
+
+  void _updateEnemySkills() {
+    for (final enemy in _enemies) {
+      if (!enemy.isMounted) {
+        continue;
+      }
+      if ((_enemySkillCooldown[enemy] ?? 0) > 0) {
+        continue;
+      }
+
+      final supportsSkill =
+          enemy.definition.id == 'bat' || enemy.definition.id == 'goblin_chief';
+      if (!supportsSkill) {
+        continue;
+      }
+
+      final direction = Vector2(
+        player.bodyRect.center.dx - enemy.bodyRect.center.dx,
+        player.bodyRect.center.dy - enemy.bodyRect.center.dy,
+      );
+      final distance = direction.length;
+      if (distance < 72 || distance > 212) {
+        continue;
+      }
+
+      _spawnEnemySkillProjectile(enemy, direction);
+      _enemySkillCooldown[enemy] =
+          enemy.definition.id == 'goblin_chief' ? 1.25 : 1.7;
+    }
+  }
+
+  void _spawnEnemySkillProjectile(EnemyComponent enemy, Vector2 direction) {
+    _sceneRoot.add(
+      EnemyOrbProjectileEffect(
+        position: Vector2(enemy.bodyRect.center.dx, enemy.bodyRect.center.dy),
+        direction: direction,
+        canTravelTo: canMoveTo,
+        playerBodyRect: () => player.bodyRect,
+        onHitPlayer: (hitDirection) {
+          final damage = math.max(2, (enemy.definition.attack * 0.68).round());
+          player.applyKnockback(hitDirection, distance: 18);
+          _spawnEnemyAttackEffect(_playerDamagePosition());
+          _showDamageNumber(
+            position: _playerDamagePosition(),
+            amount: damage,
+            isPlayerHit: true,
+          );
+          _applyDamageToPlayer(damage, source: '${enemy.definition.name} 技能');
+        },
       ),
     );
   }

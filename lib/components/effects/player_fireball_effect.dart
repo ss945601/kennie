@@ -21,7 +21,7 @@ class PlayerFireballEffect extends PositionComponent {
   final Vector2 direction;
   final bool Function(Rect targetRect) canTravelTo;
   final EnemyComponent? Function(Rect targetRect) findEnemyHit;
-  final void Function(EnemyComponent enemy) onEnemyHit;
+  final void Function(EnemyComponent enemy, Vector2 hitDirection) onEnemyHit;
 
   final double _speed = 248;
   final double _maxDistance = 248;
@@ -88,7 +88,7 @@ class PlayerFireballEffect extends PositionComponent {
     final enemy = findEnemyHit(nextRect);
     if (enemy != null) {
       _resolved = true;
-      onEnemyHit(enemy);
+      onEnemyHit(enemy, _direction);
       removeFromParent();
       return;
     }
