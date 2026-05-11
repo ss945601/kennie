@@ -13,7 +13,7 @@ class PlayerFireballEffect extends PositionComponent {
     required this.onEnemyHit,
   }) : super(
           position: position,
-          size: Vector2.all(34),
+      size: Vector2.all(42),
           anchor: Anchor.center,
           priority: 2520,
         );
@@ -23,8 +23,8 @@ class PlayerFireballEffect extends PositionComponent {
   final EnemyComponent? Function(Rect targetRect) findEnemyHit;
   final void Function(EnemyComponent enemy, Vector2 hitDirection) onEnemyHit;
 
-  final double _speed = 248;
-  final double _maxDistance = 248;
+  final double _speed = 272;
+  final double _maxDistance = 330;
   double _traveledDistance = 0;
   bool _resolved = false;
 
@@ -72,8 +72,8 @@ class PlayerFireballEffect extends PositionComponent {
     final nextPosition = position + delta;
     final nextRect = Rect.fromCenter(
       center: Offset(nextPosition.x, nextPosition.y),
-      width: size.x * 0.76,
-      height: size.y * 0.76,
+      width: size.x * 1.08,
+      height: size.y * 1.08,
     );
 
     if (!canTravelTo(nextRect)) {

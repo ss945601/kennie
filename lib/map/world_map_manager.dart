@@ -525,9 +525,26 @@ class WorldMapManager extends Component {
         continue;
       }
 
+      if (enemy.definition.id == 'goblin_chief') {
+        _spawnBossOrbBurst(enemy, direction);
+        _enemySkillCooldown[enemy] = 2.1;
+      } else {
+        _spawnEnemySkillProjectile(enemy, direction);
+        _enemySkillCooldown[enemy] = 1.7;
+      }
+    }
+  }
+
+  void _spawnBossOrbBurst(EnemyComponent enemy, Vector2 towardPlayer) {
+    final base = towardPlayer.length2 == 0 ? Vector2(1, 0) : towardPlayer.normalized();
+    const projectileCount = 10;
+    const step = (math.pi * 2) / projectileCount;
+    final startAngle = math.atan2(base.y, base.x);
+
+    for (var i = 0; i < projectileCount; i += 1) {
+      final angle = startAngle + (step * i);
+      final direction = Vector2(math.cos(angle), math.sin(angle));
       _spawnEnemySkillProjectile(enemy, direction);
-      _enemySkillCooldown[enemy] =
-          enemy.definition.id == 'goblin_chief' ? 1.25 : 1.7;
     }
   }
 
