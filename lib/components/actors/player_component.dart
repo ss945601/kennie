@@ -19,10 +19,12 @@ class PlayerComponent extends PositionComponent {
 
   final double moveSpeed = 120;
   final double attackCooldown = 0.32;
+  final double fireballCooldown = 0.72;
   Vector2 movement = Vector2.zero();
   FacingDirection facing = FacingDirection.down;
   late final SpriteAnimationGroupComponent<_PlayerVisualState> _sprite;
   double _attackCooldownRemaining = 0;
+  double _fireballCooldownRemaining = 0;
   double _attackWindowRemaining = 0;
 
   dynamic get _game => findGame();
@@ -63,6 +65,13 @@ class PlayerComponent extends PositionComponent {
 
   Vector2 get visualCenter => Vector2(position.x + size.x / 2, position.y + size.y / 2);
 
+  Vector2 get facingVector => switch (facing) {
+        FacingDirection.up => Vector2(0, -1),
+        FacingDirection.down => Vector2(0, 1),
+        FacingDirection.left => Vector2(-1, 0),
+        FacingDirection.right => Vector2(1, 0),
+      };
+
   Vector2 get attackEffectOrigin {
     final center = bodyRect.center;
     const distance = 10.0;
@@ -72,6 +81,15 @@ class PlayerComponent extends PositionComponent {
       FacingDirection.left => Vector2(center.dx - distance, center.dy),
       FacingDirection.right => Vector2(center.dx + distance, center.dy),
     };
+  }
+
+  Vector2 get fireballOrigin {
+    final center = bodyRect.center;
+    const distance = 18.0;
+    return Vector2(
+      center.dx + facingVector.x * distance,
+      center.dy + facingVector.y * distance,
+    );
   }
 
   Rect get interactionProbe {
@@ -107,12 +125,25 @@ class PlayerComponent extends PositionComponent {
   bool get isAttackActive => _attackWindowRemaining > 0;
 
   bool tryAttack() {
-    if (_attackCooldownRemaining > 0 || _game.controller.isFieldInputLocked) {
+    if (_attackCooldownRemaining > 0 ||
+        _fireballCooldownRemaining > 0 ||
+        _game.controller.isFieldInputLocked) {
       return false;
     }
     movement = Vector2.zero();
     _attackCooldownRemaining = attackCooldown;
     _attackWindowRemaining = 0.12;
+    return true;
+  }
+
+  bool tryCastFireball() {
+    if (_attackCooldownRemaining > 0 ||
+        _fireballCooldownRemaining > 0 ||
+        _game.controller.isFieldInputLocked) {
+      return false;
+    }
+    movement = Vector2.zero();
+    _fireballCooldownRemaining = fireballCooldown;
     return true;
   }
 
@@ -162,6 +193,9 @@ class PlayerComponent extends PositionComponent {
     super.update(dt);
     if (_attackCooldownRemaining > 0) {
       _attackCooldownRemaining = (_attackCooldownRemaining - dt).clamp(0, attackCooldown);
+    }
+    if (_fireballCooldownRemaining > 0) {
+      _fireballCooldownRemaining = (_fireballCooldownRemaining - dt).clamp(0, fireballCooldown);
     }
     if (_attackWindowRemaining > 0) {
       _attackWindowRemaining = (_attackWindowRemaining - dt).clamp(0, 0.12);

@@ -7,6 +7,7 @@ import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';
 import '../components/effects/player_attack_effect.dart';
+import '../components/effects/player_fireball_effect.dart';
 import '../components/objects/chest_component.dart';
 import '../components/objects/interactable_entity.dart';
 import '../components/objects/teleport_component.dart';
@@ -154,6 +155,39 @@ class WorldMapManager extends Component {
     }
   }
 
+  Future<void> playerCastFireball() async {
+    const mpCost = 8;
+    if (controller.baseStats.mp < mpCost) {
+      controller.setHudMessage('MP 不足，無法施放火球。');
+      return;
+    }
+    if (!player.tryCastFireball()) {
+      return;
+    }
+    if (!controller.spendMp(mpCost, silent: true)) {
+      controller.setHudMessage('MP 不足，無法施放火球。');
+      return;
+    }
+
+    await _sceneRoot.add(
+      PlayerFireballEffect(
+        facing: player.facing,
+        position: player.fireballOrigin,
+        canTravelTo: canMoveTo,
+        findEnemyHit: (targetRect) {
+          for (final enemy in _enemies) {
+            if (enemy.isMounted && enemy.bodyRect.overlaps(targetRect)) {
+              return enemy;
+            }
+          }
+          return null;
+        },
+        onEnemyHit: (enemy) => unawaited(_handleFireballHit(enemy)),
+      ),
+    );
+    controller.setHudMessage('火球發射！消耗 $mpCost MP。');
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -215,6 +249,17 @@ class WorldMapManager extends Component {
     final safeSpawn =
         _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
     player.snapTo(safeSpawn);
+  }
+
+  Future<void> _handleFireballHit(EnemyComponent enemy) async {
+    if (!enemy.isMounted) {
+      return;
+    }
+    final damage = controller.rollPlayerDamage(enemy.definition.defense) + 6;
+    final defeated = await enemy.receiveDamage(damage);
+    if (!defeated) {
+      controller.setHudMessage('火球命中 ${enemy.definition.name}，造成 $damage 點傷害。');
+    }
   }
 
   Future<Component> _buildSceneBackdrop(MapDefinition definition) async {

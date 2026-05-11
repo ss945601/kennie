@@ -113,6 +113,8 @@ class RpgGame extends BonfireWithCollision {
 
   Future<void> handleAttack() => worldMapManager.playerAttack();
 
+  Future<void> handleFireball() => worldMapManager.playerCastFireball();
+
   void updateTouchMovement(Vector2 movement) {
     if (!hero.isMounted) {
       return;
@@ -192,6 +194,12 @@ class RpgGame extends BonfireWithCollision {
     if ((event.logicalKey == LogicalKeyboardKey.keyJ || event.logicalKey == LogicalKeyboardKey.enter) &&
         !controller.isFieldInputLocked) {
       unawaited(handleAttack());
+      return KeyEventResult.handled;
+    }
+
+    if ((event.logicalKey == LogicalKeyboardKey.keyK || event.logicalKey == LogicalKeyboardKey.digit2) &&
+        !controller.isFieldInputLocked) {
+      unawaited(handleFireball());
       return KeyEventResult.handled;
     }
 

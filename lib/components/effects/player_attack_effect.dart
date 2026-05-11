@@ -18,29 +18,22 @@ class PlayerAttackEffect extends PositionComponent {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    await add(
-      SpriteAnimationComponent(
-        animation: await SpriteAnimation.load(
-          _assetPath,
-          SpriteAnimationData.sequenced(
-            amount: 4,
-            stepTime: 0.045,
-            textureSize: Vector2.all(16),
-            loop: false,
-          ),
+    final slash = SpriteAnimationComponent(
+      animation: await SpriteAnimation.load(
+        _assetPath,
+        SpriteAnimationData.sequenced(
+          amount: 4,
+          stepTime: 0.045,
+          textureSize: Vector2.all(16),
+          loop: false,
         ),
-        position: size / 2,
-        size: size,
-        anchor: Anchor.center,
       ),
+      position: size / 2,
+      size: size,
+      anchor: Anchor.center,
     );
-    await add(
-      TimerComponent(
-        period: 0.2,
-        removeOnFinish: true,
-        onTick: removeFromParent,
-      ),
-    );
+    slash.animationTicker?.onComplete = removeFromParent;
+    await add(slash);
   }
 
   String get _assetPath => switch (facing) {

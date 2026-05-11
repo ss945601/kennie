@@ -186,19 +186,25 @@ class PlayerStats {
   const PlayerStats({
     required this.maxHp,
     required this.hp,
+    required this.maxMp,
+    required this.mp,
     required this.attack,
     required this.defense,
   });
 
   final int maxHp;
   final int hp;
+  final int maxMp;
+  final int mp;
   final int attack;
   final int defense;
 
-  PlayerStats copyWith({int? maxHp, int? hp, int? attack, int? defense}) {
+  PlayerStats copyWith({int? maxHp, int? hp, int? maxMp, int? mp, int? attack, int? defense}) {
     return PlayerStats(
       maxHp: maxHp ?? this.maxHp,
       hp: hp ?? this.hp,
+      maxMp: maxMp ?? this.maxMp,
+      mp: mp ?? this.mp,
       attack: attack ?? this.attack,
       defense: defense ?? this.defense,
     );
@@ -207,16 +213,22 @@ class PlayerStats {
   Map<String, dynamic> toJson() => {
         'maxHp': maxHp,
         'hp': hp,
+        'maxMp': maxMp,
+        'mp': mp,
         'attack': attack,
         'defense': defense,
       };
 
   factory PlayerStats.fromJson(Map<String, dynamic> json) {
+    final parsedMaxHp = (json['maxHp'] as num?)?.toInt() ?? 64;
+    final parsedMaxMp = (json['maxMp'] as num?)?.toInt() ?? 30;
     return PlayerStats(
-      maxHp: json['maxHp'] as int,
-      hp: json['hp'] as int,
-      attack: json['attack'] as int,
-      defense: json['defense'] as int,
+      maxHp: parsedMaxHp,
+      hp: ((json['hp'] as num?)?.toInt() ?? parsedMaxHp).clamp(0, parsedMaxHp),
+      maxMp: parsedMaxMp,
+      mp: ((json['mp'] as num?)?.toInt() ?? parsedMaxMp).clamp(0, parsedMaxMp),
+      attack: (json['attack'] as num?)?.toInt() ?? 12,
+      defense: (json['defense'] as num?)?.toInt() ?? 6,
     );
   }
 }

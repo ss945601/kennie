@@ -26,6 +26,8 @@ class GameStateController extends ChangeNotifier {
   PlayerStats baseStats = const PlayerStats(
     maxHp: 64,
     hp: 64,
+    maxMp: 30,
+    mp: 30,
     attack: 12,
     defense: 6,
   );
@@ -42,7 +44,7 @@ class GameStateController extends ChangeNotifier {
 
   DialogSession? activeDialog;
   BattleState? activeBattle;
-  String hudMessage = '方向鍵移動，J 攻擊，Space 互動，Esc 開選單';
+  String hudMessage = '方向鍵移動，J 近戰，K 火球，Space 互動，Esc 開選單';
 
   Future<void> initialize() async {
     hasSaveFile = await _saveRepository.hasSave();
@@ -103,9 +105,9 @@ class GameStateController extends ChangeNotifier {
         InventoryEntry(itemId: 'bronze_sword', quantity: 1),
         InventoryEntry(itemId: 'cloth_armor', quantity: 1),
       ]);
-    baseStats = const PlayerStats(maxHp: 64, hp: 64, attack: 12, defense: 6);
+    baseStats = const PlayerStats(maxHp: 64, hp: 64, maxMp: 30, mp: 30, attack: 12, defense: 6);
     equipment = const EquipmentLoadout(weaponId: 'bronze_sword', armorId: 'cloth_armor');
-    hudMessage = '新冒險開始！先去和長老聊聊吧，J 可以直接揮劍。';
+    hudMessage = '新冒險開始！先去和長老聊聊吧，J 揮劍、K 火球。';
     notifyListeners();
   }
 
@@ -221,7 +223,7 @@ class GameStateController extends ChangeNotifier {
     experience = 0;
     nextLevelExperience = 30;
     transitionOpacity = 0;
-    hudMessage = '方向鍵移動，J 攻擊，Space 互動，Esc 開選單';
+    hudMessage = '方向鍵移動，J 近戰，K 火球，Space 互動，Esc 開選單';
     notifyListeners();
   }
 
@@ -232,7 +234,7 @@ class GameStateController extends ChangeNotifier {
     }
     activeDialog = DialogSession(tree: tree, currentNodeId: tree.startNodeId);
     _applyNodeSideEffects(startNode);
-    hudMessage = '方向鍵移動，J 攻擊，Space 互動，Esc 開選單';
+    hudMessage = '方向鍵移動，J 近戰，K 火球，Space 互動，Esc 開選單';
     notifyListeners();
   }
 
@@ -242,6 +244,20 @@ class GameStateController extends ChangeNotifier {
 
   int rollEnemyDamage(EnemyDefinition enemy) {
     return clampDamage(enemy.attack, effectiveStats.defense, _random);
+  }
+
+  bool spendMp(int amount, {bool silent = false}) {
+    if (amount <= 0) {
+      return true;
+    }
+    if (baseStats.mp < amount) {
+      return false;
+    }
+    baseStats = baseStats.copyWith(mp: baseStats.mp - amount);
+    if (!silent) {
+      notifyListeners();
+    }
+    return true;
   }
 
   bool applyPlayerDamage(int damage, {String? source}) {
@@ -301,6 +317,8 @@ class GameStateController extends ChangeNotifier {
       baseStats = baseStats.copyWith(
         maxHp: baseStats.maxHp + 10,
         hp: baseStats.maxHp + 10,
+        maxMp: baseStats.maxMp + 5,
+        mp: baseStats.maxMp + 5,
         attack: baseStats.attack + 3,
         defense: baseStats.defense + 2,
       );

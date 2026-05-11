@@ -174,6 +174,7 @@ class PauseMenuOverlay extends StatelessWidget {
                                           compact: ui.compact,
                                         ),
                                         _InfoLine(label: 'HP', value: '${stats.hp}/${stats.maxHp}', compact: ui.compact),
+                                        _InfoLine(label: 'MP', value: '${stats.mp}/${stats.maxMp}', compact: ui.compact),
                                         _InfoLine(label: '攻擊', value: '${stats.attack}', compact: ui.compact),
                                         _InfoLine(label: '防禦', value: '${stats.defense}', compact: ui.compact),
                                         SizedBox(height: ui.value(12, compactValue: 8)),

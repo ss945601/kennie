@@ -43,72 +43,86 @@ class HudOverlay extends StatelessWidget {
                     children: [
                       _Panel(
                         compact: ui.compact,
-                        child: Row(
-                          children: [
-                            Image.asset(
-                              'assets/images/health_ui.png',
-                              width: imageSize,
-                              height: imageSize,
-                              fit: BoxFit.contain,
-                            ),
-                            SizedBox(width: ui.value(10, compactValue: 8)),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Lv.${controller.level}  ${controller.currentMapId.toUpperCase()}',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: fontSize,
+                        child: Container(
+                          width: MediaQuery.sizeOf(context).width * 0.9,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Lv.${controller.level}  ${controller.currentMapId.toUpperCase()}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: fontSize,
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(height: ui.value(4, compactValue: 3)),
-                                  LinearProgressIndicator(
-                                    value: stats.maxHp == 0 ? 0 : stats.hp / stats.maxHp,
-                                    minHeight: ui.value(10, compactValue: 7),
-                                    backgroundColor: Colors.white12,
-                                    color: const Color(0xFFE25B5B),
-                                  ),
-                                  SizedBox(height: ui.value(4, compactValue: 3)),
-                                  LinearProgressIndicator(
-                                    value: expProgress,
-                                    minHeight: ui.value(8, compactValue: 6),
-                                    backgroundColor: Colors.white10,
-                                    color: const Color(0xFF7AE582),
-                                  ),
-                                  SizedBox(height: ui.value(6, compactValue: 4)),
-                                  Wrap(
-                                    spacing: ui.value(12, compactValue: 8),
-                                    runSpacing: ui.value(4, compactValue: 2),
-                                    children: <Widget>[
-                                      Text(
-                                        'HP ${stats.hp}/${stats.maxHp}',
-                                        style: TextStyle(color: Colors.white, fontSize: metaFontSize),
-                                      ),
-                                      Text(
-                                        'ATK ${stats.attack}',
-                                        style: TextStyle(color: Colors.white, fontSize: metaFontSize),
-                                      ),
-                                      Text(
-                                        'DEF ${stats.defense}',
-                                        style: TextStyle(color: Colors.white, fontSize: metaFontSize),
-                                      ),
-                                      Text(
-                                        '藥水 x$potionCount',
-                                        style: TextStyle(color: Colors.white, fontSize: metaFontSize),
-                                      ),
-                                      Text(
-                                        'EXP ${controller.experience}/${controller.nextLevelExperience}',
-                                        style: TextStyle(color: Colors.white, fontSize: metaFontSize),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                    SizedBox(height: ui.value(4, compactValue: 3)),
+                                    LinearProgressIndicator(
+                                      value: stats.maxHp == 0 ? 0 : stats.hp / stats.maxHp,
+                                      minHeight: ui.value(10, compactValue: 7),
+                                      backgroundColor: Colors.white12,
+                                      color: const Color(0xFFE25B5B),
+                                    ),
+                                    SizedBox(height: ui.value(4, compactValue: 3)),
+                                    LinearProgressIndicator(
+                                      value: stats.maxMp == 0 ? 0 : stats.mp / stats.maxMp,
+                                      minHeight: ui.value(8, compactValue: 6),
+                                      backgroundColor: Colors.white10,
+                                      color: const Color(0xFF4E8FF0),
+                                    ),
+                                    SizedBox(height: ui.value(4, compactValue: 3)),
+                                    LinearProgressIndicator(
+                                      value: expProgress,
+                                      minHeight: ui.value(8, compactValue: 6),
+                                      backgroundColor: Colors.white10,
+                                      color: const Color(0xFF7AE582),
+                                    ),
+                                    SizedBox(height: ui.value(6, compactValue: 4)),
+                                    Wrap(
+                                      spacing: ui.value(12, compactValue: 8),
+                                      runSpacing: ui.value(4, compactValue: 2),
+                                      children: <Widget>[
+                                        Text(
+                                          'HP ${stats.hp}/${stats.maxHp}',
+                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                        ),
+                                        Text(
+                                          'MP ${stats.mp}/${stats.maxMp}',
+                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                        ),
+                                        Text(
+                                          'ATK ${stats.attack}',
+                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                        ),
+                                        Text(
+                                          'DEF ${stats.defense}',
+                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                        ),
+                                        Text(
+                                          '藥水 x$potionCount',
+                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                        ),
+                                        Text(
+                                          'EXP ${controller.experience}/${controller.nextLevelExperience}',
+                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              SizedBox(width: ui.value(20, compactValue: 16)),
+                              _TouchActionButton(
+                    icon: Icons.pause_rounded,
+                    label: '選單',
+                    compact: ui.compact,
+                    onPressed: game.handlePauseToggle,
+                  ),
+                            ],
+                          ),
                         ),
                       ),
                       SizedBox(height: panelGap),
@@ -126,8 +140,8 @@ class HudOverlay extends StatelessWidget {
                         color: const Color(0x99121820),
                         child: Text(
                           ui.touchControls
-                              ? '左下搖桿移動  右下攻擊/互動/藥水  右上暫停'
-                              : 'J/Enter 攻擊  H/1 藥水  Space 互動  Esc 選單',
+                              ? '左下搖桿移動  右下攻擊/火球/互動/藥水  右上暫停'
+                              : 'J/Enter 近戰  K/2 火球  H/1 藥水  Space 互動  Esc 選單',
                           style: TextStyle(color: Colors.white54, fontSize: ui.font(12, compactValue: 9.5)),
                         ),
                       ),
@@ -136,16 +150,6 @@ class HudOverlay extends StatelessWidget {
                 ),
               ),
               if (ui.touchControls) ...[
-                Positioned(
-                  top: ui.value(12, compactValue: 8),
-                  right: ui.value(12, compactValue: 8),
-                  child: _TouchActionButton(
-                    icon: Icons.pause_rounded,
-                    label: '選單',
-                    compact: ui.compact,
-                    onPressed: game.handlePauseToggle,
-                  ),
-                ),
                 Positioned(
                   left: ui.value(16, compactValue: 8),
                   bottom: ui.value(20, compactValue: 8),
@@ -178,6 +182,14 @@ class HudOverlay extends StatelessWidget {
                             accentColor: const Color(0xFFC24C32),
                             compact: ui.compact,
                             onPressed: controller.isFieldInputLocked ? null : () => game.handleAttack(),
+                          ),
+                          SizedBox(width: ui.value(12, compactValue: 8)),
+                          _TouchActionButton(
+                            icon: Icons.local_fire_department_rounded,
+                            label: '火球',
+                            accentColor: const Color(0xFF9A4AD8),
+                            compact: ui.compact,
+                            onPressed: controller.isFieldInputLocked ? null : () => game.handleFireball(),
                           ),
                         ],
                       ),

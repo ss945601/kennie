@@ -32,7 +32,7 @@ class BattleOverlay extends StatelessWidget {
                       Expanded(
                         child: _BattlePanel(
                           title: '玩家',
-                          body: 'HP ${controller.baseStats.hp}/${controller.baseStats.maxHp}\nATK ${stats.attack} / DEF ${stats.defense}',
+                          body: 'HP ${controller.baseStats.hp}/${controller.baseStats.maxHp}\nMP ${controller.baseStats.mp}/${controller.baseStats.maxMp}\nATK ${stats.attack} / DEF ${stats.defense}',
                           compact: ui.compact,
                         ),
                       ),
