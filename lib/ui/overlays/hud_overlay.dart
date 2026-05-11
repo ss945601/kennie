@@ -7,10 +7,7 @@ import '../responsive_overlay.dart';
 import '../../state/game_state_controller.dart';
 
 class HudOverlay extends StatelessWidget {
-  const HudOverlay({
-    super.key,
-    required this.game,
-  });
+  const HudOverlay({super.key, required this.game});
 
   final RpgGame game;
 
@@ -26,7 +23,10 @@ class HudOverlay extends StatelessWidget {
               .fold<int>(0, (total, entry) => total + entry.quantity);
           final expProgress = controller.nextLevelExperience == 0
               ? 0.0
-              : (controller.experience / controller.nextLevelExperience).clamp(0.0, 1.0);
+              : (controller.experience / controller.nextLevelExperience).clamp(
+                  0.0,
+                  1.0,
+                );
           final imageSize = ui.value(72, compactValue: 52);
           final fontSize = ui.font(14, compactValue: 12);
           final metaFontSize = ui.font(12, compactValue: 10);
@@ -48,6 +48,7 @@ class HudOverlay extends StatelessWidget {
                           child: Row(
                             children: [
                               Expanded(
+                                flex: 6,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -59,68 +60,92 @@ class HudOverlay extends StatelessWidget {
                                         fontSize: fontSize,
                                       ),
                                     ),
-                                    SizedBox(height: ui.value(4, compactValue: 3)),
+                                    SizedBox(
+                                      height: ui.value(4, compactValue: 3),
+                                    ),
                                     LinearProgressIndicator(
-                                      value: stats.maxHp == 0 ? 0 : stats.hp / stats.maxHp,
+                                      value: stats.maxHp == 0
+                                          ? 0
+                                          : stats.hp / stats.maxHp,
                                       minHeight: ui.value(10, compactValue: 7),
                                       backgroundColor: Colors.white12,
                                       color: const Color(0xFFE25B5B),
                                     ),
-                                    SizedBox(height: ui.value(4, compactValue: 3)),
+                                    SizedBox(
+                                      height: ui.value(4, compactValue: 3),
+                                    ),
                                     LinearProgressIndicator(
-                                      value: stats.maxMp == 0 ? 0 : stats.mp / stats.maxMp,
+                                      value: stats.maxMp == 0
+                                          ? 0
+                                          : stats.mp / stats.maxMp,
                                       minHeight: ui.value(8, compactValue: 6),
                                       backgroundColor: Colors.white10,
                                       color: const Color(0xFF4E8FF0),
                                     ),
-                                    SizedBox(height: ui.value(4, compactValue: 3)),
+                                    SizedBox(
+                                      height: ui.value(4, compactValue: 3),
+                                    ),
                                     LinearProgressIndicator(
                                       value: expProgress,
                                       minHeight: ui.value(8, compactValue: 6),
                                       backgroundColor: Colors.white10,
                                       color: const Color(0xFF7AE582),
                                     ),
-                                    SizedBox(height: ui.value(6, compactValue: 4)),
+                                    SizedBox(
+                                      height: ui.value(6, compactValue: 4),
+                                    ),
                                     Wrap(
                                       spacing: ui.value(12, compactValue: 8),
                                       runSpacing: ui.value(4, compactValue: 2),
                                       children: <Widget>[
                                         Text(
                                           'HP ${stats.hp}/${stats.maxHp}',
-                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
                                         ),
                                         Text(
                                           'MP ${stats.mp}/${stats.maxMp}',
-                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
                                         ),
                                         Text(
                                           'ATK ${stats.attack}',
-                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
                                         ),
                                         Text(
                                           'DEF ${stats.defense}',
-                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
                                         ),
                                         Text(
                                           '藥水 x$potionCount',
-                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
                                         ),
                                         Text(
                                           'EXP ${controller.experience}/${controller.nextLevelExperience}',
-                                          style: TextStyle(color: Colors.white, fontSize: metaFontSize),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
                               ),
-                              SizedBox(width: ui.value(20, compactValue: 16)),
-                              _TouchActionButton(
-                    icon: Icons.pause_rounded,
-                    label: '選單',
-                    compact: ui.compact,
-                    onPressed: game.handlePauseToggle,
-                  ),
+                              Spacer()
                             ],
                           ),
                         ),
@@ -131,7 +156,10 @@ class HudOverlay extends StatelessWidget {
                         color: const Color(0xB2182438),
                         child: Text(
                           controller.hudMessage,
-                          style: TextStyle(color: Colors.white70, fontSize: metaFontSize),
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: metaFontSize,
+                          ),
                         ),
                       ),
                       SizedBox(height: ui.value(10, compactValue: 6)),
@@ -142,7 +170,10 @@ class HudOverlay extends StatelessWidget {
                           ui.touchControls
                               ? '左下搖桿移動  右下攻擊/火球/互動/藥水  右上暫停'
                               : 'J/Enter 近戰  K/2 火球  H/1 藥水  Space 互動  Esc 選單',
-                          style: TextStyle(color: Colors.white54, fontSize: ui.font(12, compactValue: 9.5)),
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: ui.font(12, compactValue: 9.5),
+                          ),
                         ),
                       ),
                     ],
@@ -150,6 +181,16 @@ class HudOverlay extends StatelessWidget {
                 ),
               ),
               if (ui.touchControls) ...[
+                Positioned(
+                  right: ui.value(16, compactValue: 8),
+                  top: ui.value(32, compactValue: 16),
+                  child: _TouchActionButton(
+                    icon: Icons.pause_rounded,
+                    label: '選單',
+                    compact: ui.compact,
+                    onPressed: game.handlePauseToggle,
+                  ),
+                ),
                 Positioned(
                   left: ui.value(16, compactValue: 8),
                   bottom: ui.value(20, compactValue: 8),
@@ -173,7 +214,9 @@ class HudOverlay extends StatelessWidget {
                             icon: Icons.back_hand_rounded,
                             label: '互動',
                             compact: ui.compact,
-                            onPressed: controller.isFieldInputLocked ? null : () => game.handleInteraction(),
+                            onPressed: controller.isFieldInputLocked
+                                ? null
+                                : () => game.handleInteraction(),
                           ),
                           SizedBox(width: ui.value(12, compactValue: 8)),
                           _TouchActionButton(
@@ -181,7 +224,9 @@ class HudOverlay extends StatelessWidget {
                             label: '攻擊',
                             accentColor: const Color(0xFFC24C32),
                             compact: ui.compact,
-                            onPressed: controller.isFieldInputLocked ? null : () => game.handleAttack(),
+                            onPressed: controller.isFieldInputLocked
+                                ? null
+                                : () => game.handleAttack(),
                           ),
                           SizedBox(width: ui.value(12, compactValue: 8)),
                           _TouchActionButton(
@@ -189,7 +234,9 @@ class HudOverlay extends StatelessWidget {
                             label: '火球',
                             accentColor: const Color(0xFF9A4AD8),
                             compact: ui.compact,
-                            onPressed: controller.isFieldInputLocked ? null : () => game.handleFireball(),
+                            onPressed: controller.isFieldInputLocked
+                                ? null
+                                : () => game.handleFireball(),
                           ),
                         ],
                       ),
@@ -199,7 +246,9 @@ class HudOverlay extends StatelessWidget {
                         label: '藥水 x$potionCount',
                         accentColor: const Color(0xFF3A7E61),
                         compact: ui.compact,
-                        onPressed: controller.isFieldInputLocked ? null : game.handleQuickPotion,
+                        onPressed: controller.isFieldInputLocked
+                            ? null
+                            : game.handleQuickPotion,
                       ),
                     ],
                   ),
@@ -211,7 +260,6 @@ class HudOverlay extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _Panel extends StatelessWidget {
@@ -234,7 +282,10 @@ class _Panel extends StatelessWidget {
         border: Border.all(color: Colors.white24),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 12, vertical: compact ? 5 : 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 6 : 12,
+          vertical: compact ? 5 : 8,
+        ),
         child: child,
       ),
     );
@@ -316,8 +367,12 @@ class _VirtualJoystickState extends State<_VirtualJoystick> {
     return Opacity(
       opacity: widget.enabled ? 1 : 0.6,
       child: GestureDetector(
-        onPanStart: widget.enabled ? (details) => _updateStick(details.globalPosition) : null,
-        onPanUpdate: widget.enabled ? (details) => _updateStick(details.globalPosition) : null,
+        onPanStart: widget.enabled
+            ? (details) => _updateStick(details.globalPosition)
+            : null,
+        onPanUpdate: widget.enabled
+            ? (details) => _updateStick(details.globalPosition)
+            : null,
         onPanEnd: widget.enabled ? (_) => _resetStick() : null,
         onPanCancel: widget.enabled ? _resetStick : null,
         child: SizedBox(
@@ -378,10 +433,7 @@ class _VirtualJoystickState extends State<_VirtualJoystick> {
     });
 
     widget.onChanged(
-      Vector2(
-        delta.dx / _travelRadius,
-        delta.dy / _travelRadius,
-      ),
+      Vector2(delta.dx / _travelRadius, delta.dy / _travelRadius),
     );
   }
 
