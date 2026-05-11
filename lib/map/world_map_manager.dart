@@ -1308,6 +1308,8 @@ class WorldMapManager extends Component {
               speaker: '迷霧商旅',
               text: '困在迷霧裡了吧？我這裡有貨，隱藏神裝只能打怪掉，我可不賣。',
               choices: [
+                DialogChoice(label: '買治療藥水 (20G)', actionKey: 'buy_potion', nextNodeId: 'start'),
+                DialogChoice(label: '買魔力藥水 (28G)', actionKey: 'buy_mana_potion', nextNodeId: 'start'),
                 DialogChoice(label: '買武器箱 (120G)', actionKey: 'buy_weapon_crate', nextNodeId: 'start'),
                 DialogChoice(label: '買防具箱 (120G)', actionKey: 'buy_armor_crate', nextNodeId: 'start'),
                 DialogChoice(label: '賣一件裝備', actionKey: 'sell_equipment', nextNodeId: 'start'),
