@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../audio_manager.dart';
 import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
+import '../components/actors/phantom_clone_component.dart';
 import '../components/actors/player_component.dart';
 import '../components/effects/damage_number_effect.dart';
 import '../components/effects/enemy_attack_effect.dart';
@@ -50,6 +51,7 @@ class WorldMapManager extends Component {
       <EnemyComponent, _ElderDemonLordSkillPattern>{};
   final List<_PendingRespawn> _pendingRespawns = <_PendingRespawn>[];
   MapDefinition? _activeDefinition;
+  final math.Random _combatRandom = math.Random();
   static const double _enemyPathGrid = 16;
   static const int _maxActiveEnemies = 12;
   static const double _bossSkillMinRange = 72;
@@ -61,6 +63,9 @@ class WorldMapManager extends Component {
   Vector2 mapPixelSize = Vector2.zero();
   bool _teleportLatch = false;
   int _seenEquipmentPickupSerial = 0;
+  PhantomCloneComponent? _phantomClone;
+  double _phantomCloneRespawnRemaining = 0;
+  double _phantomCloneAttackCooldownRemaining = 0;
 
   static final List<Vector2> _whirlwindDirections = <Vector2>[
     Vector2(1, 0),
@@ -102,6 +107,8 @@ class WorldMapManager extends Component {
     _pendingRespawns.clear();
     _teleportLatch = false;
     _activeDefinition = definition;
+    _phantomClone = null;
+    _phantomCloneAttackCooldownRemaining = 0;
 
     mapPixelSize = Vector2(definition.sceneSize.x, definition.sceneSize.y);
     await _sceneRoot.add(await _buildSceneBackdrop(definition));
@@ -139,6 +146,10 @@ class WorldMapManager extends Component {
         _spawnPoints[desiredSpawnId] ??
         Vector2(64, 64);
     player.snapTo(spawnPosition);
+    if (controller.hasMistReaverEquipped &&
+        _phantomCloneRespawnRemaining <= 0) {
+      await _spawnPhantomClone();
+    }
     controller.setMapContext(mapId: mapId, spawnId: desiredSpawnId);
     controller.setHudMessage(definition.hudMessage);
   }
@@ -166,6 +177,14 @@ class WorldMapManager extends Component {
       }
     }
     return true;
+  }
+
+  PhantomCloneComponent? get _activePhantomClone {
+    final clone = _phantomClone;
+    if (clone == null || !clone.isMounted || !clone.isAlive) {
+      return null;
+    }
+    return clone;
   }
 
   Future<void> interactInFrontOfPlayer() async {
@@ -434,6 +453,7 @@ class WorldMapManager extends Component {
   void update(double dt) {
     super.update(dt);
     _maybeShowEquipmentPickupText();
+    _updatePhantomClone(dt);
     _tickCombatCooldowns(dt);
     _pendingRespawns.removeWhere((pending) => !pending.timer.isActive);
     _applyTouchCollisionDamage();
@@ -502,6 +522,184 @@ class WorldMapManager extends Component {
 
   bool get _enemyAttacksBlocked => controller.isOverlayBusy;
 
+  void _updatePhantomClone(double dt) {
+    if (_phantomCloneAttackCooldownRemaining > 0) {
+      _phantomCloneAttackCooldownRemaining = math.max(
+        0,
+        _phantomCloneAttackCooldownRemaining - dt,
+      );
+    }
+
+    if (!controller.hasMistReaverEquipped) {
+      _dismissPhantomClone();
+      _phantomCloneRespawnRemaining = 0;
+      return;
+    }
+
+    final clone = _activePhantomClone;
+    if (controller.isFieldInputLocked) {
+      clone?.setCombatTarget(null);
+      return;
+    }
+
+    if (clone == null) {
+      if (_phantomCloneRespawnRemaining > 0) {
+        _phantomCloneRespawnRemaining = math.max(
+          0,
+          _phantomCloneRespawnRemaining - dt,
+        );
+        if (_phantomCloneRespawnRemaining == 0) {
+          unawaited(_spawnPhantomClone(showRespawnMessage: true));
+        }
+      } else {
+        unawaited(_spawnPhantomClone());
+      }
+      return;
+    }
+
+    clone.syncStats(controller.effectiveStats);
+    final target = _findPhantomCloneTarget(clone);
+    clone.setCombatTarget(target == null ? null : _enemyCenter(target));
+    if (target == null || _phantomCloneAttackCooldownRemaining > 0) {
+      return;
+    }
+
+    final cloneCenter = clone.bodyRect.center;
+    final targetCenter = target.bodyRect.center;
+    final distance = (cloneCenter - targetCenter).distance;
+    if (distance > 112) {
+      return;
+    }
+
+    _phantomCloneAttackCooldownRemaining = 0.95;
+    unawaited(_handlePhantomCloneAttack(clone, target));
+  }
+
+  EnemyComponent? _findPhantomCloneTarget(PhantomCloneComponent clone) {
+    EnemyComponent? bestTarget;
+    var bestDistance = double.infinity;
+    final cloneCenter = clone.bodyRect.center;
+    for (final enemy in _enemies) {
+      if (!enemy.isMounted) {
+        continue;
+      }
+      final distance = (cloneCenter - enemy.bodyRect.center).distance;
+      if (distance < bestDistance && distance <= 164) {
+        bestDistance = distance;
+        bestTarget = enemy;
+      }
+    }
+    return bestTarget;
+  }
+
+  Future<void> _spawnPhantomClone({bool showRespawnMessage = false}) async {
+    if (!controller.hasMistReaverEquipped || _activePhantomClone != null) {
+      return;
+    }
+    final clone = PhantomCloneComponent(player: player)
+      ..syncStats(controller.effectiveStats, restoreHp: true);
+    clone.position = player.position.clone();
+    _phantomClone = clone;
+    _phantomCloneRespawnRemaining = 0;
+    _phantomCloneAttackCooldownRemaining = 0.4;
+    await _sceneRoot.add(clone);
+    if (showRespawnMessage) {
+      final center = player.bodyRect.center;
+      _sceneRoot.add(
+        FloatingTextEffect(
+          text: '幻影重生',
+          color: const Color(0xFFA9D8FF),
+          position: Vector2(center.dx, center.dy - 28),
+        ),
+      );
+      controller.setHudMessage('迷霧分身已重返戰場。');
+    }
+  }
+
+  void _dismissPhantomClone() {
+    final clone = _phantomClone;
+    if (clone != null && clone.isMounted) {
+      clone.removeFromParent();
+    }
+    _phantomClone = null;
+    _phantomCloneAttackCooldownRemaining = 0;
+  }
+
+  Future<void> _handlePhantomCloneAttack(
+    PhantomCloneComponent clone,
+    EnemyComponent enemy,
+  ) async {
+    if (!clone.isMounted || !enemy.isMounted || controller.isFieldInputLocked) {
+      return;
+    }
+    final direction = _directionBetween(
+      clone.bodyRect.center,
+      enemy.bodyRect.center,
+    );
+    await _sceneRoot.add(
+      PlayerAttackEffect(
+        direction: direction,
+        position: clone.attackOrigin,
+        effectSize: 36,
+      ),
+    );
+    final damage = clampDamage(
+      clone.attackPower,
+      enemy.definition.defense,
+      _combatRandom,
+    );
+    enemy.applyKnockback(direction, distance: 10);
+    _showDamageNumber(
+      position: _enemyDamagePosition(enemy),
+      amount: damage,
+      isPlayerHit: false,
+    );
+    final defeated = await enemy.receiveDamage(damage);
+    if (!defeated) {
+      controller.setHudMessage('分身斬擊 ${enemy.definition.name}，造成 $damage 點傷害。');
+    }
+  }
+
+  bool _damagePhantomClone(int damage, {required String source}) {
+    final clone = _activePhantomClone;
+    if (clone == null) {
+      return false;
+    }
+    _spawnEnemyAttackEffect(_phantomCloneDamagePosition(clone));
+    _showDamageNumber(
+      position: _phantomCloneDamagePosition(clone),
+      amount: damage,
+      isPlayerHit: true,
+    );
+    final defeated = clone.receiveDamage(damage);
+    if (!defeated) {
+      return false;
+    }
+    final pos = clone.bodyRect.center;
+    _sceneRoot.add(
+      FloatingTextEffect(
+        text: '幻影消散',
+        color: const Color(0xFFCCD8FF),
+        position: Vector2(pos.dx, pos.dy - 18),
+      ),
+    );
+    controller.setHudMessage('分身被$source擊散，10 秒後重生。');
+    _dismissPhantomClone();
+    _phantomCloneRespawnRemaining = 10;
+    return true;
+  }
+
+  Vector2 _enemyCenter(EnemyComponent enemy) =>
+      Vector2(enemy.bodyRect.center.dx, enemy.bodyRect.center.dy);
+
+  Vector2 _directionBetween(Offset from, Offset to) {
+    final direction = Vector2(to.dx - from.dx, to.dy - from.dy);
+    if (direction.length2 == 0) {
+      return Vector2(0, 1);
+    }
+    return direction.normalized();
+  }
+
   Future<void> _handleEnemyAttack(
     EnemyComponent enemy,
     Vector2 attackDirection,
@@ -512,6 +710,22 @@ class WorldMapManager extends Component {
     if (enemy.definition.id == 'elder_demon_lord') {
       final telegraphed = await enemy.playAttackTelegraph();
       if (!telegraphed || !enemy.isMounted || _enemyAttacksBlocked) {
+        return;
+      }
+    }
+    final clone = _activePhantomClone;
+    if (clone != null) {
+      final enemyCenter = enemy.bodyRect.center;
+      final cloneDistance = (enemyCenter - clone.bodyRect.center).distance;
+      final playerDistance = (enemyCenter - player.bodyRect.center).distance;
+      final cloneInRange = cloneDistance <= enemy.definition.attackRange + 30;
+      if (cloneInRange && cloneDistance <= playerDistance + 8) {
+        final damage = clampDamage(
+          enemy.definition.attack,
+          clone.defensePower,
+          _combatRandom,
+        );
+        _damagePhantomClone(damage, source: enemy.definition.name);
         return;
       }
     }
@@ -560,6 +774,11 @@ class WorldMapManager extends Component {
   Vector2 _playerDamagePosition() {
     final body = player.bodyRect;
     return Vector2(body.center.dx, body.top - 12);
+  }
+
+  Vector2 _phantomCloneDamagePosition(PhantomCloneComponent clone) {
+    final body = clone.bodyRect;
+    return Vector2(body.center.dx, body.top - 10);
   }
 
   void _showDamageNumber({
@@ -654,29 +873,48 @@ class WorldMapManager extends Component {
       if (onCooldown) {
         continue;
       }
-      if (!enemy.bodyRect.overlaps(player.bodyRect.inflate(4))) {
+      final clone = _activePhantomClone;
+      final playerOverlap = enemy.bodyRect.overlaps(player.bodyRect.inflate(4));
+      final cloneOverlap =
+          clone != null && enemy.bodyRect.overlaps(clone.bodyRect.inflate(4));
+      if (!playerOverlap && !cloneOverlap) {
         continue;
       }
 
-      final collisionDamage = math.max(
-        1,
-        (enemy.definition.attack * 0.32).round(),
-      );
-      final pushDirection = Vector2(
-        player.bodyRect.center.dx - enemy.bodyRect.center.dx,
-        player.bodyRect.center.dy - enemy.bodyRect.center.dy,
-      );
-      player.applyKnockback(pushDirection, distance: 12);
-      _spawnEnemyAttackEffect(_playerDamagePosition());
-      _showDamageNumber(
-        position: _playerDamagePosition(),
-        amount: collisionDamage,
-        isPlayerHit: true,
-      );
-      _applyDamageToPlayer(
-        collisionDamage,
-        source: '${enemy.definition.name} 衝撞',
-      );
+      if (cloneOverlap &&
+          (!playerOverlap ||
+              (enemy.bodyRect.center - clone.bodyRect.center).distance <=
+                  (enemy.bodyRect.center - player.bodyRect.center).distance)) {
+        final collisionDamage = clampDamage(
+          enemy.definition.attack,
+          clone.defensePower,
+          _combatRandom,
+        );
+        _damagePhantomClone(
+          collisionDamage,
+          source: '${enemy.definition.name} 衝撞',
+        );
+      } else {
+        final collisionDamage = math.max(
+          1,
+          (enemy.definition.attack * 0.32).round(),
+        );
+        final pushDirection = Vector2(
+          player.bodyRect.center.dx - enemy.bodyRect.center.dx,
+          player.bodyRect.center.dy - enemy.bodyRect.center.dy,
+        );
+        player.applyKnockback(pushDirection, distance: 12);
+        _spawnEnemyAttackEffect(_playerDamagePosition());
+        _showDamageNumber(
+          position: _playerDamagePosition(),
+          amount: collisionDamage,
+          isPlayerHit: true,
+        );
+        _applyDamageToPlayer(
+          collisionDamage,
+          source: '${enemy.definition.name} 衝撞',
+        );
+      }
       _contactDamageCooldown[enemy] = 0.65;
     }
   }
@@ -839,12 +1077,24 @@ class WorldMapManager extends Component {
         position: Vector2(enemy.bodyRect.center.dx, enemy.bodyRect.center.dy),
         direction: direction,
         canTravelTo: canMoveTo,
-        playerBodyRect: () => player.bodyRect,
         speed: isElderDemonLord ? _elderDemonLordProjectileSpeed : 190,
         maxDistance: isElderDemonLord ? _elderDemonLordProjectileDistance : 260,
-        onHitPlayer: (hitDirection) {
+        onHitTarget: (targetRect, hitDirection) {
           if (_enemyAttacksBlocked) {
-            return;
+            return false;
+          }
+          final clone = _activePhantomClone;
+          if (clone != null && clone.bodyRect.overlaps(targetRect)) {
+            final damage = clampDamage(
+              math.max(2, (enemy.definition.attack * 0.68).round()),
+              clone.defensePower,
+              _combatRandom,
+            );
+            _damagePhantomClone(damage, source: '${enemy.definition.name} 技能');
+            return true;
+          }
+          if (!player.bodyRect.overlaps(targetRect)) {
+            return false;
           }
           final damage = math.max(2, (enemy.definition.attack * 0.68).round());
           player.applyKnockback(hitDirection, distance: 18);
@@ -855,6 +1105,7 @@ class WorldMapManager extends Component {
             isPlayerHit: true,
           );
           _applyDamageToPlayer(damage, source: '${enemy.definition.name} 技能');
+          return true;
         },
       ),
     );

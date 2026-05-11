@@ -81,6 +81,19 @@ class GameStateController extends ChangeNotifier {
 
   int get equipmentPickupSerial => _equipmentPickupSerial;
 
+  InventoryEntry? get equippedWeaponEntry =>
+      _entryById(equipment.weaponEntryId);
+
+  InventoryEntry? get equippedArmorEntry => _entryById(equipment.armorEntryId);
+
+  bool get hasPhantomCloakEquipped =>
+      equippedArmorEntry?.itemId == 'phantom_cloak';
+
+  bool get hasMistReaverEquipped =>
+      equippedWeaponEntry?.itemId == 'mist_reaver';
+
+  double get playerMoveSpeedMultiplier => hasPhantomCloakEquipped ? 1.25 : 1.0;
+
   Future<void> initialize() async {
     hasSaveFile = await _saveRepository.hasSave();
     transitionOpacity = 0;

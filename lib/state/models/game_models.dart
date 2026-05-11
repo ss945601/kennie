@@ -52,7 +52,7 @@ const Map<String, ItemDefinition> itemCatalog = {
   'mist_reaver': ItemDefinition(
     id: 'mist_reaver',
     name: '迷霧收割者',
-    description: '隱藏武器，ATK +18，僅怪物掉落。',
+    description: '隱藏武器，ATK +18，召喚 1/2 能力的半透明分身協助戰鬥，倒下後 10 秒復活。',
     type: ItemType.weapon,
     attackBonus: 18,
     hiddenDropOnly: true,
@@ -93,7 +93,7 @@ const Map<String, ItemDefinition> itemCatalog = {
   'phantom_cloak': ItemDefinition(
     id: 'phantom_cloak',
     name: '幻影披風',
-    description: '隱藏防具，DEF +14，僅怪物掉落。',
+    description: '隱藏防具，DEF +14，提升移動速度並在移動時留下殘影。',
     type: ItemType.armor,
     defenseBonus: 14,
     hiddenDropOnly: true,
@@ -722,10 +722,12 @@ class InventoryEntry {
   final int bonusMaxMp;
   final bool justObtained;
 
-  bool get isEquipment => item.type == ItemType.weapon || item.type == ItemType.armor;
+  bool get isEquipment =>
+      item.type == ItemType.weapon || item.type == ItemType.armor;
   String get stableEntryId => entryId.isEmpty ? '${itemId}_legacy' : entryId;
 
-  ItemDefinition get item => itemCatalog[itemId] ??
+  ItemDefinition get item =>
+      itemCatalog[itemId] ??
       ItemDefinition(
         id: itemId,
         name: itemId,
@@ -758,16 +760,16 @@ class InventoryEntry {
   }
 
   Map<String, dynamic> toJson() => {
-        'itemId': itemId,
-        'quantity': quantity,
-        'entryId': entryId,
-        'rarity': rarity.name,
-        'bonusAttack': bonusAttack,
-        'bonusDefense': bonusDefense,
-        'bonusMaxHp': bonusMaxHp,
-        'bonusMaxMp': bonusMaxMp,
-        'justObtained': justObtained,
-      };
+    'itemId': itemId,
+    'quantity': quantity,
+    'entryId': entryId,
+    'rarity': rarity.name,
+    'bonusAttack': bonusAttack,
+    'bonusDefense': bonusDefense,
+    'bonusMaxHp': bonusMaxHp,
+    'bonusMaxMp': bonusMaxMp,
+    'justObtained': justObtained,
+  };
 
   factory InventoryEntry.fromJson(Map<String, dynamic> json) {
     final rarityName = json['rarity'] as String?;
@@ -807,17 +809,19 @@ class EquipmentLoadout {
   }
 
   Map<String, dynamic> toJson() => {
-        'weaponEntryId': weaponEntryId,
-        'armorEntryId': armorEntryId,
-      };
+    'weaponEntryId': weaponEntryId,
+    'armorEntryId': armorEntryId,
+  };
 
   factory EquipmentLoadout.fromJson(Map<String, dynamic> json) {
     final legacyWeapon = json['weaponId'] as String?;
     final legacyArmor = json['armorId'] as String?;
     return EquipmentLoadout(
-      weaponEntryId: json['weaponEntryId'] as String? ??
+      weaponEntryId:
+          json['weaponEntryId'] as String? ??
           (legacyWeapon == null ? null : '${legacyWeapon}_legacy'),
-      armorEntryId: json['armorEntryId'] as String? ??
+      armorEntryId:
+          json['armorEntryId'] as String? ??
           (legacyArmor == null ? null : '${legacyArmor}_legacy'),
     );
   }
@@ -840,7 +844,14 @@ class PlayerStats {
   final int attack;
   final int defense;
 
-  PlayerStats copyWith({int? maxHp, int? hp, int? maxMp, int? mp, int? attack, int? defense}) {
+  PlayerStats copyWith({
+    int? maxHp,
+    int? hp,
+    int? maxMp,
+    int? mp,
+    int? attack,
+    int? defense,
+  }) {
     return PlayerStats(
       maxHp: maxHp ?? this.maxHp,
       hp: hp ?? this.hp,
@@ -852,13 +863,13 @@ class PlayerStats {
   }
 
   Map<String, dynamic> toJson() => {
-        'maxHp': maxHp,
-        'hp': hp,
-        'maxMp': maxMp,
-        'mp': mp,
-        'attack': attack,
-        'defense': defense,
-      };
+    'maxHp': maxHp,
+    'hp': hp,
+    'maxMp': maxMp,
+    'mp': mp,
+    'attack': attack,
+    'defense': defense,
+  };
 
   factory PlayerStats.fromJson(Map<String, dynamic> json) {
     final parsedMaxHp = (json['maxHp'] as num?)?.toInt() ?? 64;
@@ -906,20 +917,20 @@ class GameSnapshot {
   final PlayerStats stats;
 
   Map<String, dynamic> toJson() => {
-      'playerName': playerName,
-        'currentMapId': currentMapId,
-        'currentSpawnId': currentSpawnId,
-        'playerX': playerX,
-        'playerY': playerY,
-        'level': level,
-        'experience': experience,
-        'nextLevelExperience': nextLevelExperience,
-        'gold': gold,
-        'storyFlags': storyFlags,
-        'inventory': inventory.map((entry) => entry.toJson()).toList(),
-        'equipment': equipment.toJson(),
-        'stats': stats.toJson(),
-      };
+    'playerName': playerName,
+    'currentMapId': currentMapId,
+    'currentSpawnId': currentSpawnId,
+    'playerX': playerX,
+    'playerY': playerY,
+    'level': level,
+    'experience': experience,
+    'nextLevelExperience': nextLevelExperience,
+    'gold': gold,
+    'storyFlags': storyFlags,
+    'inventory': inventory.map((entry) => entry.toJson()).toList(),
+    'equipment': equipment.toJson(),
+    'stats': stats.toJson(),
+  };
 
   factory GameSnapshot.fromJson(Map<String, dynamic> json) {
     return GameSnapshot(
@@ -928,15 +939,19 @@ class GameSnapshot {
       currentSpawnId: json['currentSpawnId'] as String,
       playerX: (json['playerX'] as num).toDouble(),
       playerY: (json['playerY'] as num).toDouble(),
-        level: (json['level'] as num?)?.toInt() ?? 1,
-        experience: (json['experience'] as num?)?.toInt() ?? 0,
-        nextLevelExperience: (json['nextLevelExperience'] as num?)?.toInt() ?? 30,
+      level: (json['level'] as num?)?.toInt() ?? 1,
+      experience: (json['experience'] as num?)?.toInt() ?? 0,
+      nextLevelExperience: (json['nextLevelExperience'] as num?)?.toInt() ?? 30,
       gold: (json['gold'] as num?)?.toInt() ?? 40,
       storyFlags: Map<String, bool>.from(json['storyFlags'] as Map),
       inventory: (json['inventory'] as List<dynamic>)
-          .map((entry) => InventoryEntry.fromJson(entry as Map<String, dynamic>))
+          .map(
+            (entry) => InventoryEntry.fromJson(entry as Map<String, dynamic>),
+          )
           .toList(),
-      equipment: EquipmentLoadout.fromJson(json['equipment'] as Map<String, dynamic>),
+      equipment: EquipmentLoadout.fromJson(
+        json['equipment'] as Map<String, dynamic>,
+      ),
       stats: PlayerStats.fromJson(json['stats'] as Map<String, dynamic>),
     );
   }
@@ -979,20 +994,14 @@ class DialogNode {
 }
 
 class DialogTree {
-  const DialogTree({
-    required this.startNodeId,
-    required this.nodes,
-  });
+  const DialogTree({required this.startNodeId, required this.nodes});
 
   final String startNodeId;
   final Map<String, DialogNode> nodes;
 }
 
 class DialogSession {
-  const DialogSession({
-    required this.tree,
-    required this.currentNodeId,
-  });
+  const DialogSession({required this.tree, required this.currentNodeId});
 
   final DialogTree tree;
   final String currentNodeId;

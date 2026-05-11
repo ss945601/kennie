@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
+import '../effects/player_afterimage_effect.dart';
 import '../../state/models/game_models.dart';
 
 enum _PlayerVisualState {
@@ -19,7 +20,7 @@ enum _PlayerVisualState {
 class PlayerComponent extends PositionComponent {
   PlayerComponent() : super(size: Vector2.all(48), anchor: Anchor.topLeft);
 
-  final double moveSpeed = 120;
+  static const double _baseMoveSpeed = 120;
   final double attackCooldown = 0.32;
   final double fireballCooldown = 0.72;
   Vector2 movement = Vector2.zero();
@@ -34,6 +35,7 @@ class PlayerComponent extends PositionComponent {
   double _knockbackTotal = 0;
   final double _knockbackMinSpeed = 92;
   final double _knockbackMaxSpeed = 320;
+  double _afterimageCooldownRemaining = 0;
 
   dynamic get _game => findGame();
 
@@ -44,14 +46,28 @@ class PlayerComponent extends PositionComponent {
       size: size,
       anchor: Anchor.topLeft,
       animations: {
-        _PlayerVisualState.idleUp: await _loadAnimation('player/knight_idle.png'),
-        _PlayerVisualState.idleDown: await _loadAnimation('player/knight_idle.png'),
-        _PlayerVisualState.idleLeft: await _loadAnimation('player/knight_idle_left.png'),
-        _PlayerVisualState.idleRight: await _loadAnimation('player/knight_idle.png'),
+        _PlayerVisualState.idleUp: await _loadAnimation(
+          'player/knight_idle.png',
+        ),
+        _PlayerVisualState.idleDown: await _loadAnimation(
+          'player/knight_idle.png',
+        ),
+        _PlayerVisualState.idleLeft: await _loadAnimation(
+          'player/knight_idle_left.png',
+        ),
+        _PlayerVisualState.idleRight: await _loadAnimation(
+          'player/knight_idle.png',
+        ),
         _PlayerVisualState.runUp: await _loadAnimation('player/knight_run.png'),
-        _PlayerVisualState.runDown: await _loadAnimation('player/knight_run.png'),
-        _PlayerVisualState.runLeft: await _loadAnimation('player/knight_run_left.png'),
-        _PlayerVisualState.runRight: await _loadAnimation('player/knight_run.png'),
+        _PlayerVisualState.runDown: await _loadAnimation(
+          'player/knight_run.png',
+        ),
+        _PlayerVisualState.runLeft: await _loadAnimation(
+          'player/knight_run_left.png',
+        ),
+        _PlayerVisualState.runRight: await _loadAnimation(
+          'player/knight_run.png',
+        ),
       },
       current: _PlayerVisualState.idleDown,
     );
@@ -71,7 +87,8 @@ class PlayerComponent extends PositionComponent {
 
   Rect get bodyRect => Rect.fromLTWH(position.x + 12, position.y + 18, 24, 24);
 
-  Vector2 get visualCenter => Vector2(position.x + size.x / 2, position.y + size.y / 2);
+  Vector2 get visualCenter =>
+      Vector2(position.x + size.x / 2, position.y + size.y / 2);
 
   Vector2 get aimDirection => _aimDirection.clone();
 
@@ -84,6 +101,9 @@ class PlayerComponent extends PositionComponent {
   }
 
   Vector2 get facingVector => aimDirection;
+
+  double get moveSpeed =>
+      _baseMoveSpeed * _game.controller.playerMoveSpeedMultiplier;
 
   Vector2 get attackEffectOrigin {
     final center = bodyRect.center;
@@ -110,11 +130,7 @@ class PlayerComponent extends PositionComponent {
       center.dx + facingVector.x * forwardDistance,
       center.dy + facingVector.y * forwardDistance,
     );
-    return Rect.fromCenter(
-      center: probeCenter,
-      width: 28,
-      height: 28,
-    );
+    return Rect.fromCenter(center: probeCenter, width: 28, height: 28);
   }
 
   Rect get attackHitbox {
@@ -124,11 +140,7 @@ class PlayerComponent extends PositionComponent {
       center.dx + facingVector.x * forwardDistance,
       center.dy + facingVector.y * forwardDistance,
     );
-    return Rect.fromCenter(
-      center: hitCenter,
-      width: 34,
-      height: 34,
-    );
+    return Rect.fromCenter(center: hitCenter, width: 34, height: 34);
   }
 
   bool get isAttackActive => _attackWindowRemaining > 0;
@@ -160,9 +172,11 @@ class PlayerComponent extends PositionComponent {
     Set<LogicalKeyboardKey> keysPressed, {
     required bool inputLocked,
   }) {
-    final horizontal = (keysPressed.contains(LogicalKeyboardKey.arrowRight) ? 1 : 0) -
+    final horizontal =
+        (keysPressed.contains(LogicalKeyboardKey.arrowRight) ? 1 : 0) -
         (keysPressed.contains(LogicalKeyboardKey.arrowLeft) ? 1 : 0);
-    final vertical = (keysPressed.contains(LogicalKeyboardKey.arrowDown) ? 1 : 0) -
+    final vertical =
+        (keysPressed.contains(LogicalKeyboardKey.arrowDown) ? 1 : 0) -
         (keysPressed.contains(LogicalKeyboardKey.arrowUp) ? 1 : 0);
 
     updateMovementFromVector(
@@ -175,7 +189,6 @@ class PlayerComponent extends PositionComponent {
     Vector2 nextMovement, {
     required bool inputLocked,
   }) {
-
     if (inputLocked) {
       movement = Vector2.zero();
       return;
@@ -196,13 +209,25 @@ class PlayerComponent extends PositionComponent {
   void update(double dt) {
     super.update(dt);
     if (_attackCooldownRemaining > 0) {
-      _attackCooldownRemaining = (_attackCooldownRemaining - dt).clamp(0, attackCooldown);
+      _attackCooldownRemaining = (_attackCooldownRemaining - dt).clamp(
+        0,
+        attackCooldown,
+      );
     }
     if (_fireballCooldownRemaining > 0) {
-      _fireballCooldownRemaining = (_fireballCooldownRemaining - dt).clamp(0, fireballCooldown);
+      _fireballCooldownRemaining = (_fireballCooldownRemaining - dt).clamp(
+        0,
+        fireballCooldown,
+      );
     }
     if (_attackWindowRemaining > 0) {
       _attackWindowRemaining = (_attackWindowRemaining - dt).clamp(0, 0.12);
+    }
+    if (_afterimageCooldownRemaining > 0) {
+      _afterimageCooldownRemaining = (_afterimageCooldownRemaining - dt).clamp(
+        0,
+        1,
+      );
     }
 
     if (_knockbackRemaining > 0 && _knockbackDirection.length2 > 0) {
@@ -210,7 +235,8 @@ class PlayerComponent extends PositionComponent {
           ? 0.0
           : (_knockbackRemaining / _knockbackTotal).clamp(0.0, 1.0);
       final eased = progress * progress;
-      final speed = _knockbackMinSpeed +
+      final speed =
+          _knockbackMinSpeed +
           (_knockbackMaxSpeed - _knockbackMinSpeed) * eased;
       final step = math.min(speed * dt, _knockbackRemaining);
       final delta = _knockbackDirection * step;
@@ -237,8 +263,10 @@ class PlayerComponent extends PositionComponent {
     final delta = movement.normalized() * moveSpeed * dt;
     final nextRect = bodyRect.shift(Offset(delta.x, delta.y));
     if (_game.worldMapManager.canPlayerMoveTo(nextRect)) {
+      final previousPosition = position.clone();
       position += delta;
       _game.controller.setPlayerPosition(position.x, position.y);
+      _maybeSpawnAfterimage(previousPosition);
     }
     _syncPriority();
   }
@@ -262,7 +290,8 @@ class PlayerComponent extends PositionComponent {
     if (!_sprite.isMounted) {
       return;
     }
-    final running = movement != Vector2.zero() && !_game.controller.isFieldInputLocked;
+    final running =
+        movement != Vector2.zero() && !_game.controller.isFieldInputLocked;
     final visualFacing = _visualFacing(_aimDirection);
     _sprite.current = switch ((running, visualFacing)) {
       (false, FacingDirection.up) => _PlayerVisualState.idleUp,
@@ -283,7 +312,8 @@ class PlayerComponent extends PositionComponent {
   FacingDirection _vectorToFacing(Vector2 direction) {
     final angle = direction.screenAngle();
     final normalized = (angle + 6.283185307179586) % 6.283185307179586;
-    final octant = ((normalized + 0.39269908169872414) / 0.7853981633974483).floor() % 8;
+    final octant =
+        ((normalized + 0.39269908169872414) / 0.7853981633974483).floor() % 8;
     return switch (octant) {
       0 => FacingDirection.right,
       1 => FacingDirection.downRight,
@@ -305,5 +335,49 @@ class PlayerComponent extends PositionComponent {
 
   void _syncPriority() {
     priority = (bodyRect.bottom).round();
+  }
+
+  void _maybeSpawnAfterimage(Vector2 previousPosition) {
+    if (!_game.controller.hasPhantomCloakEquipped ||
+        _afterimageCooldownRemaining > 0 ||
+        parent == null) {
+      return;
+    }
+    _afterimageCooldownRemaining = 0.08;
+    parent!.add(
+      PlayerAfterimageEffect(
+        assetPath: _currentAfterimageAssetPath,
+        position: previousPosition,
+        size: size.clone(),
+      ),
+    );
+  }
+
+  String get _currentAfterimageAssetPath {
+    final running =
+        movement != Vector2.zero() && !_game.controller.isFieldInputLocked;
+    final visualFacing = _visualFacing(_aimDirection);
+    if (running) {
+      return switch (visualFacing) {
+        FacingDirection.left => 'player/knight_run_left.png',
+        FacingDirection.right ||
+        FacingDirection.down ||
+        FacingDirection.up ||
+        FacingDirection.upRight ||
+        FacingDirection.downRight ||
+        FacingDirection.downLeft ||
+        FacingDirection.upLeft => 'player/knight_run.png',
+      };
+    }
+    return switch (visualFacing) {
+      FacingDirection.left => 'player/knight_idle_left.png',
+      FacingDirection.right ||
+      FacingDirection.down ||
+      FacingDirection.up ||
+      FacingDirection.upRight ||
+      FacingDirection.downRight ||
+      FacingDirection.downLeft ||
+      FacingDirection.upLeft => 'player/knight_idle.png',
+    };
   }
 }
