@@ -117,6 +117,26 @@ const Map<String, ItemDefinition> itemCatalog = {
     description: '擊敗迷霧首領後的證明。',
     type: ItemType.keyItem,
   ),
+  'cangxiang': ItemDefinition(
+    id: 'cangxiang',
+    name: '蒼響',
+    description: '傳說之刃，ATK +999，MP +999。',
+    type: ItemType.weapon,
+    attackBonus: 999,
+    maxMpBonus: 999,
+    hiddenDropOnly: true,
+    price: 0,
+  ),
+  'zamazenta_armor': ItemDefinition(
+    id: 'zamazenta_armor',
+    name: '藏瑪然特',
+    description: '傳說防具，DEF +999，MP +999。',
+    type: ItemType.armor,
+    defenseBonus: 999,
+    maxHpBonus: 999,
+    hiddenDropOnly: true,
+    price: 0,
+  ),
 };
 
 const Map<String, EnemyDefinition> enemyCatalog = {
@@ -640,6 +660,8 @@ class ItemDefinition {
     this.defenseBonus = 0,
     this.healAmount = 0,
     this.manaAmount = 0,
+    this.maxMpBonus = 0,
+    this.maxHpBonus = 0,
     this.price = 0,
     this.hiddenDropOnly = false,
   });
@@ -652,6 +674,8 @@ class ItemDefinition {
   final int defenseBonus;
   final int healAmount;
   final int manaAmount;
+  final int maxMpBonus;
+  final int maxHpBonus;
   final int price;
   final bool hiddenDropOnly;
 }

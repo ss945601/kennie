@@ -12,12 +12,14 @@ class ChestComponent extends PositionComponent implements InteractableEntity {
     required super.size,
     required this.chestId,
     required this.onInteract,
+    this.showSprite = true,
   }) {
     _syncPriority();
   }
 
   final String chestId;
   final Future<void> Function() onInteract;
+  final bool showSprite;
   bool opened = false;
   late final SpriteAnimationComponent _sprite;
   late final SpriteAnimation _closedAnimation;
@@ -27,6 +29,9 @@ class ChestComponent extends PositionComponent implements InteractableEntity {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    if (!showSprite) {
+      return;
+    }
     const frameSize = 16.0;
     final image = await Flame.images.load('items/chest_spritesheet.png');
     final frameCount = (image.width / frameSize).floor().clamp(2, 64);
@@ -63,7 +68,7 @@ class ChestComponent extends PositionComponent implements InteractableEntity {
       return;
     }
     await onInteract();
-    if (!isMounted) {
+    if (!isMounted || !showSprite) {
       return;
     }
     opened = true;

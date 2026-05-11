@@ -219,10 +219,7 @@ class _HudOverlayState extends State<HudOverlay> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _TouchActionButton(
+                                                _TouchActionButton(
                             icon: Icons.back_hand_rounded,
                             label: '互動',
                             compact: ui.compact,
@@ -233,6 +230,9 @@ class _HudOverlayState extends State<HudOverlay> {
                                     game.handleInteraction();
                                   },
                           ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           SizedBox(width: ui.value(12, compactValue: 8)),
                           _TouchActionButton(
                             icon: Icons.gavel_rounded,

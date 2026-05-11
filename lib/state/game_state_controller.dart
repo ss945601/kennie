@@ -68,8 +68,16 @@ class GameStateController extends ChangeNotifier {
     final weapon = weaponEntry?.item;
     final armor = armorEntry?.item;
     return baseStats.copyWith(
-      maxHp: baseStats.maxHp + (weaponEntry?.bonusMaxHp ?? 0) + (armorEntry?.bonusMaxHp ?? 0),
-      maxMp: baseStats.maxMp + (weaponEntry?.bonusMaxMp ?? 0) + (armorEntry?.bonusMaxMp ?? 0),
+      maxHp: baseStats.maxHp +
+          (weapon?.maxHpBonus ?? 0) +
+          (armor?.maxHpBonus ?? 0) +
+          (weaponEntry?.bonusMaxHp ?? 0) +
+          (armorEntry?.bonusMaxHp ?? 0),
+      maxMp: baseStats.maxMp +
+          (weapon?.maxMpBonus ?? 0) +
+          (armor?.maxMpBonus ?? 0) +
+          (weaponEntry?.bonusMaxMp ?? 0) +
+          (armorEntry?.bonusMaxMp ?? 0),
       attack: baseStats.attack + (weapon?.attackBonus ?? 0) + (weaponEntry?.bonusAttack ?? 0) + (armorEntry?.bonusAttack ?? 0),
       defense: baseStats.defense + (armor?.defenseBonus ?? 0) + (weaponEntry?.bonusDefense ?? 0) + (armorEntry?.bonusDefense ?? 0),
     );

@@ -76,8 +76,10 @@ class SceneChestDefinition {
     required this.x,
     required this.y,
     this.giveFlag,
+    this.extraItemIds = const <String>[],
     this.showWhenFlag,
     this.hiddenWhenFlag,
+    this.hiddenTrigger = false,
   });
 
   final String id;
@@ -85,8 +87,10 @@ class SceneChestDefinition {
   final double x;
   final double y;
   final String? giveFlag;
+  final List<String> extraItemIds;
   final String? showWhenFlag;
   final String? hiddenWhenFlag;
+  final bool hiddenTrigger;
 }
 
 class MapDefinition {
@@ -205,6 +209,14 @@ const mapDefinitions = <String, MapDefinition>{
       ),
     ],
     chests: [
+      SceneChestDefinition(
+        id: 'starter_legend_cache',
+        itemId: 'cangxiang',
+        extraItemIds: ['zamazenta_armor'],
+        x: 128,
+        y: 344,
+        hiddenTrigger: true,
+      ),
       SceneChestDefinition(
         id: 'gate_key',
         itemId: 'old_key',

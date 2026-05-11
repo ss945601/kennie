@@ -39,6 +39,7 @@ class WorldMapManager extends Component {
   final List<Rect> _collisionRects = <Rect>[];
   final List<InteractableEntity> _interactables = <InteractableEntity>[];
   final List<EnemyComponent> _enemies = <EnemyComponent>[];
+  final Map<EnemyComponent, String> _enemySceneIds = <EnemyComponent, String>{};
   final List<TeleportComponent> _teleports = <TeleportComponent>[];
   final Map<String, Vector2> _spawnPoints = <String, Vector2>{};
   final Map<EnemyComponent, double> _contactDamageCooldown =
@@ -73,6 +74,7 @@ class WorldMapManager extends Component {
     _collisionRects.clear();
     _interactables.clear();
     _enemies.clear();
+    _enemySceneIds.clear();
     _teleports.clear();
     _spawnPoints.clear();
     _contactDamageCooldown.clear();
@@ -691,6 +693,7 @@ class WorldMapManager extends Component {
       onAttackPlayer: _handleEnemyAttack,
       onDefeated: (enemy) async {
         _enemies.remove(enemy);
+        _enemySceneIds.remove(enemy);
         controller.onEnemyDefeated(
           enemy.definition,
           defeatedFlag: enemyDef.hiddenWhenFlag,
@@ -706,6 +709,7 @@ class WorldMapManager extends Component {
       },
     );
     _enemies.add(enemy);
+    _enemySceneIds[enemy] = enemyDef.id;
     await _sceneRoot.add(enemy);
     if (enemyDef.isBoss) {
       unawaited(AudioManager.instance.playBossBgm());
@@ -996,40 +1000,73 @@ class WorldMapManager extends Component {
         continue;
       }
       late final ChestComponent chest;
+      final openedFlagKey = 'chest_${chestDef.id}_opened';
+      if (controller.flag(openedFlagKey)) {
+        continue;
+      }
       chest = ChestComponent(
         chestId: chestDef.id,
         position: Vector2(chestDef.x, chestDef.y),
-        size: Vector2(28, 28),
+        size: chestDef.hiddenTrigger ? Vector2(18, 18) : Vector2(28, 28),
+        showSprite: !chestDef.hiddenTrigger,
         onInteract: () async {
           final flagKey = 'chest_${chestDef.id}_opened';
           if (controller.flag(flagKey)) {
             controller.setHudMessage('這個寶箱已經空了。');
             return;
           }
-          controller.addItem(chestDef.itemId);
-          await controller.showChestRewardDialog(
-            chestId: chestDef.id,
-            itemId: chestDef.itemId,
-            itemName: itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId,
-          );
+          final rewardItemIds = <String>[chestDef.itemId, ...chestDef.extraItemIds];
+          for (final itemId in rewardItemIds) {
+            controller.addItem(itemId);
+            await controller.showChestRewardDialog(
+              chestId: chestDef.id,
+              itemId: itemId,
+              itemName: itemCatalog[itemId]?.name ?? itemId,
+            );
+          }
           controller.setFlag(flagKey, true);
           if (chestDef.giveFlag case final giveFlag?) {
             controller.setFlag(giveFlag, true);
+            await _spawnEnemiesUnlockedByFlag(giveFlag);
           }
           _interactables.remove(chest);
           if (chest.isMounted) {
             chest.removeFromParent();
           }
           controller.setHudMessage(
-            '獲得 ${itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId}。',
+            '獲得 ${rewardItemIds.map((itemId) => itemCatalog[itemId]?.name ?? itemId).join('、')}。',
           );
         },
       );
-      if (controller.flag('chest_${chestDef.id}_opened')) {
-        chest.opened = true;
-      }
       _interactables.add(chest);
       await _sceneRoot.add(chest);
+    }
+  }
+
+  Future<void> _spawnEnemiesUnlockedByFlag(String flagKey) async {
+    final definition = _activeDefinition;
+    if (definition == null) {
+      return;
+    }
+    _enemySceneIds.removeWhere((enemy, _) => !enemy.isMounted);
+    for (final enemyDef in definition.enemies) {
+      if (enemyDef.showWhenFlag != flagKey) {
+        continue;
+      }
+      if (!_isVisible(
+        showWhenFlag: enemyDef.showWhenFlag,
+        hiddenWhenFlag: enemyDef.hiddenWhenFlag,
+      )) {
+        continue;
+      }
+      if (_enemySceneIds.containsValue(enemyDef.id)) {
+        continue;
+      }
+      final enemyData = enemyCatalog[enemyDef.enemyId];
+      if (enemyData == null) {
+        continue;
+      }
+      await _spawnEnemy(enemyDef, enemyData);
     }
   }
 
