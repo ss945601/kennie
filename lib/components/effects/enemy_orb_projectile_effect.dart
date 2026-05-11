@@ -9,7 +9,11 @@ class EnemyOrbProjectileEffect extends PositionComponent {
     required this.canTravelTo,
     required this.playerBodyRect,
     required this.onHitPlayer,
-  }) : super(
+    double speed = 190,
+    double maxDistance = 260,
+  }) : _speed = speed,
+       _maxDistance = maxDistance,
+       super(
          position: position,
          size: Vector2.all(14),
          anchor: Anchor.center,
@@ -21,8 +25,8 @@ class EnemyOrbProjectileEffect extends PositionComponent {
   final Rect Function() playerBodyRect;
   final void Function(Vector2 hitDirection) onHitPlayer;
 
-  final double _speed = 190;
-  final double _maxDistance = 260;
+  final double _speed;
+  final double _maxDistance;
   double _travelled = 0;
   bool _resolved = false;
 

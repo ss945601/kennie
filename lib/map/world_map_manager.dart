@@ -46,10 +46,17 @@ class WorldMapManager extends Component {
       <EnemyComponent, double>{};
   final Map<EnemyComponent, double> _enemySkillCooldown =
       <EnemyComponent, double>{};
+    final Map<EnemyComponent, _ElderDemonLordSkillPattern> _elderSkillPattern =
+      <EnemyComponent, _ElderDemonLordSkillPattern>{};
   final List<_PendingRespawn> _pendingRespawns = <_PendingRespawn>[];
   MapDefinition? _activeDefinition;
   static const double _enemyPathGrid = 16;
   static const int _maxActiveEnemies = 12;
+  static const double _bossSkillMinRange = 72;
+  static const double _regularEnemySkillMaxRange = 212;
+  static const double _elderDemonLordSkillMaxRange = 360;
+  static const double _elderDemonLordProjectileSpeed = 165;
+  static const double _elderDemonLordProjectileDistance = 560;
 
   Vector2 mapPixelSize = Vector2.zero();
   bool _teleportLatch = false;
@@ -80,6 +87,7 @@ class WorldMapManager extends Component {
     _spawnPoints.clear();
     _contactDamageCooldown.clear();
     _enemySkillCooldown.clear();
+    _elderSkillPattern.clear();
     for (final pending in _pendingRespawns) {
       pending.timer.cancel();
     }
@@ -588,7 +596,10 @@ class WorldMapManager extends Component {
         player.bodyRect.center.dy - enemy.bodyRect.center.dy,
       );
       final distance = direction.length;
-      if (distance < 72 || distance > 212) {
+      final maxRange = enemy.definition.id == 'elder_demon_lord'
+          ? _elderDemonLordSkillMaxRange
+          : _regularEnemySkillMaxRange;
+      if (distance < _bossSkillMinRange || distance > maxRange) {
         continue;
       }
 
@@ -617,12 +628,24 @@ class WorldMapManager extends Component {
     if (!telegraphed || !enemy.isMounted || _enemyAttacksBlocked) {
       return;
     }
-    await _spawnSequentialBossOrbBursts(
-      enemy,
-      waves: 3,
-      projectileCount: 14,
-      interval: const Duration(milliseconds: 180),
-    );
+    final nextPattern = _elderSkillPattern[enemy] ?? _ElderDemonLordSkillPattern.ringBurst;
+    switch (nextPattern) {
+      case _ElderDemonLordSkillPattern.ringBurst:
+        _elderSkillPattern[enemy] = _ElderDemonLordSkillPattern.serpentineBarrage;
+        await _spawnSequentialBossOrbBursts(
+          enemy,
+          waves: 3,
+          projectileCount: 14,
+          interval: const Duration(milliseconds: 180),
+        );
+      case _ElderDemonLordSkillPattern.serpentineBarrage:
+        _elderSkillPattern[enemy] = _ElderDemonLordSkillPattern.ringBurst;
+        await _spawnSerpentineBossBarrage(
+          enemy,
+          totalShots: 50,
+          interval: const Duration(milliseconds: 90),
+        );
+    }
   }
 
   Future<void> _spawnSequentialBossOrbBursts(
@@ -645,6 +668,33 @@ class WorldMapManager extends Component {
         projectileCount: projectileCount,
       );
       if (wave < waves - 1) {
+        await Future<void>.delayed(interval);
+      }
+    }
+  }
+
+  Future<void> _spawnSerpentineBossBarrage(
+    EnemyComponent enemy, {
+    required int totalShots,
+    required Duration interval,
+  }) async {
+    for (var shot = 0; shot < totalShots; shot += 1) {
+      if (!isMounted || !enemy.isMounted || _enemyAttacksBlocked) {
+        return;
+      }
+      final towardPlayer = Vector2(
+        player.bodyRect.center.dx - enemy.bodyRect.center.dx,
+        player.bodyRect.center.dy - enemy.bodyRect.center.dy,
+      );
+      final baseDirection = towardPlayer.length2 == 0
+          ? Vector2(0, 1)
+          : towardPlayer.normalized();
+      final progress = shot / totalShots;
+      final angleOffset = math.sin(progress * math.pi * 4) * 0.82;
+      final direction = _rotate(baseDirection, angleOffset);
+      _spawnEnemySkillProjectile(enemy, direction);
+
+      if (shot < totalShots - 1) {
         await Future<void>.delayed(interval);
       }
     }
@@ -675,12 +725,19 @@ class WorldMapManager extends Component {
   }
 
   void _spawnEnemySkillProjectile(EnemyComponent enemy, Vector2 direction) {
+    final isElderDemonLord = enemy.definition.id == 'elder_demon_lord';
     _sceneRoot.add(
       EnemyOrbProjectileEffect(
         position: Vector2(enemy.bodyRect.center.dx, enemy.bodyRect.center.dy),
         direction: direction,
         canTravelTo: canMoveTo,
         playerBodyRect: () => player.bodyRect,
+        speed: isElderDemonLord
+            ? _elderDemonLordProjectileSpeed
+            : 190,
+        maxDistance: isElderDemonLord
+            ? _elderDemonLordProjectileDistance
+            : 260,
         onHitPlayer: (hitDirection) {
           if (_enemyAttacksBlocked) {
             return;
@@ -1407,6 +1464,11 @@ enum _FireballMode {
   basic,
   flamethrower,
   inferno,
+}
+
+enum _ElderDemonLordSkillPattern {
+  ringBurst,
+  serpentineBarrage,
 }
 
 class _PathCell {
