@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
@@ -11,6 +12,9 @@ class GameStateController extends ChangeNotifier {
 
   final SaveRepository _saveRepository;
   final Random _random = Random();
+  static const double _potionDropChance = 0.10;
+  static const double _equipmentDropChance = 0.10;
+  static const double _rareEquipmentChanceWithinEquipmentDrops = 0.10;
 
   bool showTitleMenu = true;
   bool hasSaveFile = false;
@@ -43,8 +47,14 @@ class GameStateController extends ChangeNotifier {
   ];
 
   DialogSession? activeDialog;
+  ChestRewardDialogState? activeChestRewardDialog;
+  Completer<void>? _chestRewardDialogCompleter;
   BattleState? activeBattle;
   String hudMessage = '方向鍵移動，J 近戰，K 火球，Space 互動，Esc 開選單';
+  EquipmentPickupEvent? latestEquipmentPickup;
+  int _equipmentPickupSerial = 0;
+
+  int get equipmentPickupSerial => _equipmentPickupSerial;
 
   Future<void> initialize() async {
     hasSaveFile = await _saveRepository.hasSave();
@@ -119,9 +129,14 @@ class GameStateController extends ChangeNotifier {
   }
 
   bool get isFieldInputLocked =>
-      showTitleMenu || isPauseMenuOpen || activeDialog != null || transitionOpacity > 0.05;
+      showTitleMenu ||
+      isPauseMenuOpen ||
+      activeDialog != null ||
+      activeChestRewardDialog != null ||
+      transitionOpacity > 0.05;
 
-  bool get isOverlayBusy => activeDialog != null || isPauseMenuOpen;
+    bool get isOverlayBusy =>
+      activeDialog != null || activeChestRewardDialog != null || isPauseMenuOpen;
 
   bool flag(String key) => storyFlags[key] ?? false;
 
@@ -288,6 +303,9 @@ class GameStateController extends ChangeNotifier {
     showTitleMenu = true;
     isPauseMenuOpen = false;
     activeDialog = null;
+    activeChestRewardDialog = null;
+    _chestRewardDialogCompleter?.complete();
+    _chestRewardDialogCompleter = null;
     activeBattle = null;
     level = 1;
     experience = 0;
@@ -305,6 +323,32 @@ class GameStateController extends ChangeNotifier {
     activeDialog = DialogSession(tree: tree, currentNodeId: tree.startNodeId);
     _applyNodeSideEffects(startNode);
     hudMessage = '方向鍵移動，J 近戰，K 火球，Space 互動，Esc 開選單';
+    notifyListeners();
+  }
+
+  Future<void> showChestRewardDialog({
+    required String chestId,
+    required String itemId,
+    required String itemName,
+  }) {
+    _chestRewardDialogCompleter?.complete();
+    _chestRewardDialogCompleter = Completer<void>();
+    activeChestRewardDialog = ChestRewardDialogState(
+      chestId: chestId,
+      itemId: itemId,
+      itemName: itemName,
+    );
+    notifyListeners();
+    return _chestRewardDialogCompleter!.future;
+  }
+
+  void confirmChestRewardDialog() {
+    if (activeChestRewardDialog == null) {
+      return;
+    }
+    activeChestRewardDialog = null;
+    _chestRewardDialogCompleter?.complete();
+    _chestRewardDialogCompleter = null;
     notifyListeners();
   }
 
@@ -382,9 +426,10 @@ class GameStateController extends ChangeNotifier {
 
   void onEnemyDefeated(EnemyDefinition enemy, {String? defeatedFlag, String? messagePrefix}) {
     final drops = <String>[];
-    if (enemy.rewardItemId case final rewardItemId?) {
-      addItem(rewardItemId, markObtained: false);
-      drops.add(itemCatalog[rewardItemId]?.name ?? rewardItemId);
+    if (_random.nextDouble() < _potionDropChance) {
+      final potionId = _random.nextDouble() < 0.25 ? 'mana_potion' : 'potion';
+      addItem(potionId, markObtained: false);
+      drops.add(itemCatalog[potionId]?.name ?? potionId);
     }
     final rolledGold = enemy.maxGold > enemy.minGold
         ? enemy.minGold + _random.nextInt(enemy.maxGold - enemy.minGold + 1)
@@ -393,10 +438,20 @@ class GameStateController extends ChangeNotifier {
       addGold(rolledGold, silent: true);
       drops.add('$rolledGold 金幣');
     }
-    final randomEquip = rollRandomEquipmentDrop(enemy);
-    if (randomEquip != null) {
-      addEquipmentDrop(randomEquip, rarity: _rollRarity(enemy), markObtained: true);
-      drops.add('【${itemCatalog[randomEquip]?.name ?? randomEquip}】');
+    if (_random.nextDouble() < _equipmentDropChance) {
+      final randomEquip = rollRandomEquipmentDrop(enemy);
+      if (randomEquip != null) {
+        final rarity = _rollDropEquipmentRarity();
+        addEquipmentDrop(randomEquip, rarity: rarity, markObtained: true);
+        final rarityTag = switch (rarity) {
+          ItemRarity.common => '普通',
+          ItemRarity.uncommon => '優秀',
+          ItemRarity.rare => '稀有',
+          ItemRarity.epic => '史詩',
+          ItemRarity.legendary => '傳說',
+        };
+        drops.add('$rarityTag【${itemCatalog[randomEquip]?.name ?? randomEquip}】');
+      }
     }
     if (enemy.rewardFlag case final rewardFlag?) {
       storyFlags[rewardFlag] = true;
@@ -441,10 +496,6 @@ class GameStateController extends ChangeNotifier {
   }
 
   String? rollRandomEquipmentDrop(EnemyDefinition enemy) {
-    final chance = enemy.isBoss ? 1.0 : (enemy.id == 'goblin' ? 0.4 : 0.22);
-    if (_random.nextDouble() > chance) {
-      return null;
-    }
     final pools = <String>[
       'hunter_dagger',
       'iron_blade',
@@ -458,18 +509,14 @@ class GameStateController extends ChangeNotifier {
     return pools[_random.nextInt(pools.length)];
   }
 
-  ItemRarity _rollRarity(EnemyDefinition enemy) {
+  ItemRarity _rollDropEquipmentRarity() {
     final roll = _random.nextDouble();
-    if (enemy.isBoss) {
-      if (roll < 0.14) return ItemRarity.legendary;
-      if (roll < 0.45) return ItemRarity.epic;
-      if (roll < 0.8) return ItemRarity.rare;
+    if (roll < _rareEquipmentChanceWithinEquipmentDrops) {
+      return ItemRarity.rare;
+    }
+    if (roll < 0.45) {
       return ItemRarity.uncommon;
     }
-    if (roll < 0.02) return ItemRarity.legendary;
-    if (roll < 0.1) return ItemRarity.epic;
-    if (roll < 0.3) return ItemRarity.rare;
-    if (roll < 0.65) return ItemRarity.uncommon;
     return ItemRarity.common;
   }
 
@@ -492,6 +539,14 @@ class GameStateController extends ChangeNotifier {
       justObtained: markObtained,
     );
     inventory.add(entry);
+    if (markObtained) {
+      _equipmentPickupSerial += 1;
+      latestEquipmentPickup = EquipmentPickupEvent(
+        serial: _equipmentPickupSerial,
+        itemName: entry.item.name,
+        rarity: entry.rarity,
+      );
+    }
   }
 
   _AffixRoll _generateAffix(ItemRarity rarity) {
@@ -909,4 +964,28 @@ class _AffixRoll {
   final int bonusDefense;
   final int bonusMaxHp;
   final int bonusMaxMp;
+}
+
+class EquipmentPickupEvent {
+  const EquipmentPickupEvent({
+    required this.serial,
+    required this.itemName,
+    required this.rarity,
+  });
+
+  final int serial;
+  final String itemName;
+  final ItemRarity rarity;
+}
+
+class ChestRewardDialogState {
+  const ChestRewardDialogState({
+    required this.chestId,
+    required this.itemId,
+    required this.itemName,
+  });
+
+  final String chestId;
+  final String itemId;
+  final String itemName;
 }

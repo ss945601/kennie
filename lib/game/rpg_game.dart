@@ -163,6 +163,7 @@ class RpgGame extends BonfireWithCollision {
     _setOverlay(OverlayIds.hud, !controller.showTitleMenu);
     _setOverlay(OverlayIds.pauseMenu, controller.isPauseMenuOpen);
     _setOverlay(OverlayIds.dialog, controller.activeDialog != null);
+    _setOverlay(OverlayIds.chestReward, controller.activeChestRewardDialog != null);
     _setOverlay(OverlayIds.battle, false);
   }
 

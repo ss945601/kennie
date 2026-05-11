@@ -3,6 +3,7 @@ abstract final class OverlayIds {
   static const titleSettings = 'TitleSettings';
   static const hud = 'Hud';
   static const dialog = 'Dialog';
+  static const chestReward = 'ChestReward';
   static const pauseMenu = 'PauseMenu';
   static const battle = 'Battle';
   static const fade = 'Fade';

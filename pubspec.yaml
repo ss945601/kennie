@@ -34,6 +34,8 @@ flutter:
     - assets/images/player/
     - assets/images/enemy/
     - assets/images/characters/Enemy/
+    - assets/images/characters/Male/
+    - assets/images/characters/Female/
     - assets/images/tiled/punnyworld/
     - assets/images/items/
     - assets/images/tile/

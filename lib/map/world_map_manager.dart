@@ -11,6 +11,7 @@ import '../components/actors/player_component.dart';
 import '../components/effects/damage_number_effect.dart';
 import '../components/effects/enemy_attack_effect.dart';
 import '../components/effects/enemy_orb_projectile_effect.dart';
+import '../components/effects/floating_text_effect.dart';
 import '../components/effects/player_attack_effect.dart';
 import '../components/effects/player_fireball_effect.dart';
 import '../components/objects/chest_component.dart';
@@ -50,6 +51,7 @@ class WorldMapManager extends Component {
 
   Vector2 mapPixelSize = Vector2.zero();
   bool _teleportLatch = false;
+  int _seenEquipmentPickupSerial = 0;
 
   @override
   Future<void> onLoad() async {
@@ -266,6 +268,7 @@ class WorldMapManager extends Component {
   @override
   void update(double dt) {
     super.update(dt);
+    _maybeShowEquipmentPickupText();
     _tickCombatCooldowns(dt);
     _pendingRespawns.removeWhere((pending) => !pending.timer.isActive);
     _applyTouchCollisionDamage();
@@ -395,6 +398,29 @@ class WorldMapManager extends Component {
         amount: amount,
         isPlayerHit: isPlayerHit,
         position: position,
+      ),
+    );
+  }
+
+  void _maybeShowEquipmentPickupText() {
+    final event = controller.latestEquipmentPickup;
+    if (event == null || event.serial <= _seenEquipmentPickupSerial) {
+      return;
+    }
+    _seenEquipmentPickupSerial = event.serial;
+    final color = switch (event.rarity) {
+      ItemRarity.common => const Color(0xFFE8EDF8),
+      ItemRarity.uncommon => const Color(0xFF9FFFB2),
+      ItemRarity.rare => const Color(0xFF82DBFF),
+      ItemRarity.epic => const Color(0xFFE7A9FF),
+      ItemRarity.legendary => const Color(0xFFFFDC86),
+    };
+    final body = player.bodyRect;
+    _sceneRoot.add(
+      FloatingTextEffect(
+        text: event.itemName,
+        color: color,
+        position: Vector2(body.center.dx, body.top - 22),
       ),
     );
   }
@@ -934,7 +960,8 @@ class WorldMapManager extends Component {
       )) {
         continue;
       }
-      final chest = ChestComponent(
+      late final ChestComponent chest;
+      chest = ChestComponent(
         chestId: chestDef.id,
         position: Vector2(chestDef.x, chestDef.y),
         size: Vector2(28, 28),
@@ -944,11 +971,20 @@ class WorldMapManager extends Component {
             controller.setHudMessage('這個寶箱已經空了。');
             return;
           }
+          controller.addItem(chestDef.itemId);
+          await controller.showChestRewardDialog(
+            chestId: chestDef.id,
+            itemId: chestDef.itemId,
+            itemName: itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId,
+          );
           controller.setFlag(flagKey, true);
           if (chestDef.giveFlag case final giveFlag?) {
             controller.setFlag(giveFlag, true);
           }
-          controller.addItem(chestDef.itemId);
+          _interactables.remove(chest);
+          if (chest.isMounted) {
+            chest.removeFromParent();
+          }
           controller.setHudMessage(
             '獲得 ${itemCatalog[chestDef.itemId]?.name ?? chestDef.itemId}。',
           );

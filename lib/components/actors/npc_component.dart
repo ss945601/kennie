@@ -27,6 +27,7 @@ class NpcComponent extends PositionComponent implements InteractableEntity {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    final usesCharacterSheet = spritePath.startsWith('characters/');
     await add(
       SpriteAnimationComponent(
         animation: await SpriteAnimation.load(
@@ -34,7 +35,7 @@ class NpcComponent extends PositionComponent implements InteractableEntity {
           SpriteAnimationData.sequenced(
             amount: idleFrames,
             stepTime: 0.18,
-            textureSize: Vector2.all(16),
+            textureSize: usesCharacterSheet ? Vector2.all(32) : Vector2.all(16),
           ),
         ),
         size: size,

@@ -7,6 +7,7 @@ import 'game/rpg_game.dart';
 import 'state/game_state_controller.dart';
 import 'state/services/save_repository.dart';
 import 'ui/overlays/battle_overlay.dart';
+import 'ui/overlays/chest_reward_overlay.dart';
 import 'ui/overlays/dialog_overlay.dart';
 import 'ui/overlays/hud_overlay.dart';
 import 'ui/overlays/pause_menu_overlay.dart';
@@ -86,6 +87,7 @@ class _KennieAppState extends State<KennieApp> {
               OverlayIds.titleSettings: (context, game) => TitleSettingsOverlay(game: game),
               OverlayIds.hud: (context, game) => HudOverlay(game: game),
               OverlayIds.dialog: (context, game) => const DialogOverlay(),
+              OverlayIds.chestReward: (context, game) => const ChestRewardOverlay(),
               OverlayIds.pauseMenu: (context, game) => PauseMenuOverlay(game: game),
               OverlayIds.battle: (context, game) => const BattleOverlay(),
               OverlayIds.fade: (context, game) => const SceneFadeOverlay(),

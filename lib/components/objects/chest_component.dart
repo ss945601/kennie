@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flame/flame.dart';
 import 'package:flame/components.dart';
 
 import 'interactable_entity.dart';
@@ -26,13 +27,16 @@ class ChestComponent extends PositionComponent implements InteractableEntity {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    const frameSize = 16.0;
+    final image = await Flame.images.load('items/chest_spritesheet.png');
+    final frameCount = (image.width / frameSize).floor().clamp(2, 64);
     final frames = await Future.wait(
       List<Future<Sprite>>.generate(
-        4,
+        frameCount,
         (index) => Sprite.load(
           'items/chest_spritesheet.png',
-          srcPosition: Vector2(index * 16, 0),
-          srcSize: Vector2.all(16),
+          srcPosition: Vector2(index * frameSize, 0),
+          srcSize: Vector2.all(frameSize),
         ),
       ),
     );
@@ -59,6 +63,9 @@ class ChestComponent extends PositionComponent implements InteractableEntity {
       return;
     }
     await onInteract();
+    if (!isMounted) {
+      return;
+    }
     opened = true;
     _sprite.animation = _openingAnimation;
     unawaited(
