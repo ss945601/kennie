@@ -559,8 +559,9 @@ class WorldMapManager extends Component {
         continue;
       }
 
-      final supportsSkill =
-          enemy.definition.id == 'bat' || enemy.definition.id == 'goblin_chief';
+      final supportsSkill = enemy.definition.id == 'bat' ||
+          enemy.definition.id == 'goblin_chief' ||
+          enemy.definition.id == 'elder_demon_lord';
       if (!supportsSkill) {
         continue;
       }
@@ -574,7 +575,17 @@ class WorldMapManager extends Component {
         continue;
       }
 
-      if (enemy.definition.id == 'goblin_chief') {
+      if (enemy.definition.id == 'elder_demon_lord') {
+        unawaited(
+          _spawnSequentialBossOrbBursts(
+            enemy,
+            waves: 3,
+            projectileCount: 14,
+            interval: const Duration(milliseconds: 180),
+          ),
+        );
+        _enemySkillCooldown[enemy] = 3.2;
+      } else if (enemy.definition.id == 'goblin_chief') {
         _spawnBossOrbBurst(enemy, direction);
         _enemySkillCooldown[enemy] = 2.1;
       } else {
@@ -584,10 +595,38 @@ class WorldMapManager extends Component {
     }
   }
 
-  void _spawnBossOrbBurst(EnemyComponent enemy, Vector2 towardPlayer) {
+  Future<void> _spawnSequentialBossOrbBursts(
+    EnemyComponent enemy, {
+    required int waves,
+    required int projectileCount,
+    required Duration interval,
+  }) async {
+    for (var wave = 0; wave < waves; wave += 1) {
+      if (!isMounted || !enemy.isMounted) {
+        return;
+      }
+      final towardPlayer = Vector2(
+        player.bodyRect.center.dx - enemy.bodyRect.center.dx,
+        player.bodyRect.center.dy - enemy.bodyRect.center.dy,
+      );
+      _spawnBossOrbBurst(
+        enemy,
+        towardPlayer,
+        projectileCount: projectileCount,
+      );
+      if (wave < waves - 1) {
+        await Future<void>.delayed(interval);
+      }
+    }
+  }
+
+  void _spawnBossOrbBurst(
+    EnemyComponent enemy,
+    Vector2 towardPlayer, {
+    int projectileCount = 10,
+  }) {
     final base = towardPlayer.length2 == 0 ? Vector2(1, 0) : towardPlayer.normalized();
-    const projectileCount = 10;
-    const step = (math.pi * 2) / projectileCount;
+    final step = (math.pi * 2) / projectileCount;
     final startAngle = math.atan2(base.y, base.x);
 
     for (var i = 0; i < projectileCount; i += 1) {

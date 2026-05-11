@@ -156,7 +156,7 @@ const mapDefinitions = <String, MapDefinition>{
         y: 192,
         spritePath: 'characters/Male/Male 18-1.png',
         idleFrames: 3,
-        hiddenWhenFlag: 'beat_elder_boss',
+        hiddenWhenFlag: 'elder_boss_triggered',
       ),
       SceneNpcDefinition(
         id: 'merchant',
@@ -215,7 +215,7 @@ const mapDefinitions = <String, MapDefinition>{
         enemyId: 'elder_demon_lord',
         label: '大魔王',
         x: 320,
-        y: 192,
+        y: 202,
         showWhenFlag: 'elder_boss_triggered',
         hiddenWhenFlag: 'beat_elder_boss',
         canRespawn: false,

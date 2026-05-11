@@ -197,7 +197,7 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     id: 'goblin_chief',
     name: '迷霧統御者',
     maxHp: 110,
-    attack: 30,
+    attack: 12,
     defense: 14,
     moveSpeed: 96,
     aggroRange: 214,
@@ -216,7 +216,7 @@ const Map<String, EnemyDefinition> enemyCatalog = {
     id: 'elder_demon_lord',
     name: '大魔王',
     maxHp: 400,
-    attack: 60,
+    attack: 15,
     defense: 25,
     moveSpeed: 80,
     aggroRange: 300,
@@ -865,9 +865,9 @@ class PlayerStats {
     final parsedMaxMp = (json['maxMp'] as num?)?.toInt() ?? 30;
     return PlayerStats(
       maxHp: parsedMaxHp,
-      hp: ((json['hp'] as num?)?.toInt() ?? parsedMaxHp).clamp(0, parsedMaxHp),
+      hp: max(0, (json['hp'] as num?)?.toInt() ?? parsedMaxHp),
       maxMp: parsedMaxMp,
-      mp: ((json['mp'] as num?)?.toInt() ?? parsedMaxMp).clamp(0, parsedMaxMp),
+      mp: max(0, (json['mp'] as num?)?.toInt() ?? parsedMaxMp),
       attack: (json['attack'] as num?)?.toInt() ?? 12,
       defense: (json['defense'] as num?)?.toInt() ?? 6,
     );

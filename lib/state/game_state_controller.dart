@@ -76,19 +76,31 @@ class GameStateController extends ChangeNotifier {
     final armorEntry = _entryById(equipment.armorEntryId);
     final weapon = weaponEntry?.item;
     final armor = armorEntry?.item;
+    final effectiveMaxHp = baseStats.maxHp +
+        (weapon?.maxHpBonus ?? 0) +
+        (armor?.maxHpBonus ?? 0) +
+        (weaponEntry?.bonusMaxHp ?? 0) +
+        (armorEntry?.bonusMaxHp ?? 0);
+    final effectiveMaxMp = baseStats.maxMp +
+        (weapon?.maxMpBonus ?? 0) +
+        (armor?.maxMpBonus ?? 0) +
+        (weaponEntry?.bonusMaxMp ?? 0) +
+        (armorEntry?.bonusMaxMp ?? 0);
     return baseStats.copyWith(
-      maxHp: baseStats.maxHp +
-          (weapon?.maxHpBonus ?? 0) +
-          (armor?.maxHpBonus ?? 0) +
-          (weaponEntry?.bonusMaxHp ?? 0) +
-          (armorEntry?.bonusMaxHp ?? 0),
-      maxMp: baseStats.maxMp +
-          (weapon?.maxMpBonus ?? 0) +
-          (armor?.maxMpBonus ?? 0) +
-          (weaponEntry?.bonusMaxMp ?? 0) +
-          (armorEntry?.bonusMaxMp ?? 0),
+      maxHp: effectiveMaxHp,
+      hp: baseStats.hp.clamp(0, effectiveMaxHp),
+      maxMp: effectiveMaxMp,
+      mp: baseStats.mp.clamp(0, effectiveMaxMp),
       attack: baseStats.attack + (weapon?.attackBonus ?? 0) + (weaponEntry?.bonusAttack ?? 0) + (armorEntry?.bonusAttack ?? 0),
       defense: baseStats.defense + (armor?.defenseBonus ?? 0) + (weaponEntry?.bonusDefense ?? 0) + (armorEntry?.bonusDefense ?? 0),
+    );
+  }
+
+  void _normalizeVitalsToEffectiveMaximums() {
+    final stats = effectiveStats;
+    baseStats = baseStats.copyWith(
+      hp: stats.hp,
+      mp: stats.mp,
     );
   }
 
@@ -336,6 +348,7 @@ class GameStateController extends ChangeNotifier {
     equipment = snapshot.equipment;
     _ensureLegacyLoadoutBackfill();
     baseStats = snapshot.stats;
+    _normalizeVitalsToEffectiveMaximums();
     activeDialog = null;
     activeBattle = null;
     isPauseMenuOpen = false;
@@ -474,8 +487,9 @@ class GameStateController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    final maxHp = effectiveStats.maxHp;
     baseStats = baseStats.copyWith(
-      hp: min(baseStats.maxHp, baseStats.hp + potion.healAmount),
+      hp: min(maxHp, baseStats.hp + potion.healAmount),
     );
     hudMessage = '你使用了治療藥水，回復 ${potion.healAmount} HP。';
     notifyListeners();
@@ -492,8 +506,9 @@ class GameStateController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    final maxMp = effectiveStats.maxMp;
     baseStats = baseStats.copyWith(
-      mp: min(baseStats.maxMp, baseStats.mp + manaPotion.manaAmount),
+      mp: min(maxMp, baseStats.mp + manaPotion.manaAmount),
     );
     hudMessage = '你使用了魔力藥水，回復 ${manaPotion.manaAmount} MP。';
     notifyListeners();
@@ -920,8 +935,9 @@ class GameStateController extends ChangeNotifier {
         break;
       case BattleCommand.item:
         if (consumeItem('potion')) {
+          final maxHp = effectiveStats.maxHp;
           updatedPlayerStats = baseStats.copyWith(
-            hp: min(baseStats.maxHp, baseStats.hp + 25),
+            hp: min(maxHp, baseStats.hp + 25),
           );
           baseStats = updatedPlayerStats;
           log = '你使用了治療藥水，回復 25 HP。';
@@ -1046,10 +1062,12 @@ class GameStateController extends ChangeNotifier {
     switch (item.type) {
       case ItemType.weapon:
         equipment = equipment.copyWith(weaponEntryId: entry.stableEntryId);
+        _normalizeVitalsToEffectiveMaximums();
         hudMessage = '已裝備 ${item.name}。';
         break;
       case ItemType.armor:
         equipment = equipment.copyWith(armorEntryId: entry.stableEntryId);
+        _normalizeVitalsToEffectiveMaximums();
         hudMessage = '已裝備 ${item.name}。';
         break;
       case ItemType.consumable:
