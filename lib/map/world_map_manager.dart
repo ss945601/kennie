@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:async' as dart_async;
 import 'dart:math' as math;
 
 import 'package:flame/components.dart';
@@ -38,10 +39,12 @@ class WorldMapManager extends Component {
   final List<EnemyComponent> _enemies = <EnemyComponent>[];
   final List<TeleportComponent> _teleports = <TeleportComponent>[];
   final Map<String, Vector2> _spawnPoints = <String, Vector2>{};
-    final Map<EnemyComponent, double> _contactDamageCooldown =
+  final Map<EnemyComponent, double> _contactDamageCooldown =
       <EnemyComponent, double>{};
-    final Map<EnemyComponent, double> _enemySkillCooldown =
+  final Map<EnemyComponent, double> _enemySkillCooldown =
       <EnemyComponent, double>{};
+  final List<_PendingRespawn> _pendingRespawns = <_PendingRespawn>[];
+  MapDefinition? _activeDefinition;
   static const double _enemyPathGrid = 16;
 
   Vector2 mapPixelSize = Vector2.zero();
@@ -70,7 +73,12 @@ class WorldMapManager extends Component {
     _spawnPoints.clear();
     _contactDamageCooldown.clear();
     _enemySkillCooldown.clear();
+    for (final pending in _pendingRespawns) {
+      pending.timer.cancel();
+    }
+    _pendingRespawns.clear();
     _teleportLatch = false;
+    _activeDefinition = definition;
 
     mapPixelSize = Vector2(definition.sceneSize.x, definition.sceneSize.y);
     await _sceneRoot.add(await _buildSceneBackdrop(definition));
@@ -258,6 +266,7 @@ class WorldMapManager extends Component {
   void update(double dt) {
     super.update(dt);
     _tickCombatCooldowns(dt);
+    _pendingRespawns.removeWhere((pending) => !pending.timer.isActive);
     _applyTouchCollisionDamage();
     _updateEnemySkills();
 
@@ -279,6 +288,9 @@ class WorldMapManager extends Component {
       if (!controller.flag(requiredFlag)) {
         _teleportLatch = true;
         controller.setHudMessage(currentTeleport.blockedMessage ?? '前方似乎被封住了。');
+        if (controller.currentMapId == 'ruins' && requiredFlag == 'can_escape_forest') {
+          onTeleportTriggered('ruins', 'entry');
+        }
         return;
       }
     }
@@ -591,29 +603,80 @@ class WorldMapManager extends Component {
       if (enemyData == null) {
         continue;
       }
-      final enemy = EnemyComponent(
-        position: Vector2(enemyDef.x, enemyDef.y),
-        size: enemyDef.enemyId == 'goblin_chief'
-            ? Vector2(56, 64)
-            : Vector2(40, 48),
-        definition: enemyData,
-        player: player,
-        canMoveTo: _canEnemyMoveTo,
-        findPath: _findEnemyPath,
-        onAttackPlayer: _handleEnemyAttack,
-        onDefeated: (enemy) async {
-          _enemies.remove(enemy);
-          controller.onEnemyDefeated(
-            enemy.definition,
-            defeatedFlag: enemyDef.hiddenWhenFlag,
-            messagePrefix: enemyDef.label,
-          );
-          enemy.removeFromParent();
-        },
-      );
-      _enemies.add(enemy);
-      await _sceneRoot.add(enemy);
+      await _spawnEnemy(enemyDef, enemyData);
     }
+  }
+
+  Future<void> _spawnEnemy(
+    SceneEnemyDefinition enemyDef,
+    EnemyDefinition baseEnemy,
+  ) async {
+    final scaled = _scaledEnemy(baseEnemy);
+    final enemy = EnemyComponent(
+      position: Vector2(enemyDef.x, enemyDef.y),
+      size: enemyDef.isBoss ? Vector2(56, 64) : Vector2(40, 48),
+      definition: scaled,
+      player: player,
+      canMoveTo: _canEnemyMoveTo,
+      findPath: _findEnemyPath,
+      onAttackPlayer: _handleEnemyAttack,
+      onDefeated: (enemy) async {
+        _enemies.remove(enemy);
+        controller.onEnemyDefeated(
+          enemy.definition,
+          defeatedFlag: enemyDef.hiddenWhenFlag,
+          messagePrefix: enemyDef.label,
+        );
+        enemy.removeFromParent();
+        if (enemyDef.canRespawn && !enemyDef.isBoss && isMounted) {
+          _scheduleRespawn(enemyDef, baseEnemy);
+        }
+      },
+    );
+    _enemies.add(enemy);
+    await _sceneRoot.add(enemy);
+  }
+
+  EnemyDefinition _scaledEnemy(EnemyDefinition baseEnemy) {
+    final offset = -1 + math.Random().nextInt(3);
+    final enemyLevel = math.max(1, controller.level + offset);
+    final mul = 1 + ((enemyLevel - 1) * 0.12);
+    return EnemyDefinition(
+      id: baseEnemy.id,
+      name: '${baseEnemy.name} Lv.$enemyLevel',
+      maxHp: (baseEnemy.maxHp * mul).round(),
+      attack: (baseEnemy.attack * mul).round(),
+      defense: (baseEnemy.defense * (1 + (enemyLevel - 1) * 0.08)).round(),
+      moveSpeed: baseEnemy.moveSpeed,
+      aggroRange: baseEnemy.aggroRange,
+      attackRange: baseEnemy.attackRange,
+      attackCooldown: baseEnemy.attackCooldown,
+      experienceReward: (baseEnemy.experienceReward * (1 + (enemyLevel - 1) * 0.16)).round(),
+      aggressive: baseEnemy.aggressive,
+      spriteSheet: baseEnemy.spriteSheet,
+      rewardItemId: baseEnemy.rewardItemId,
+      rewardFlag: baseEnemy.rewardFlag,
+      minGold: (baseEnemy.minGold * mul).round(),
+      maxGold: (baseEnemy.maxGold * mul).round(),
+      isBoss: baseEnemy.isBoss,
+    );
+  }
+
+  void _scheduleRespawn(SceneEnemyDefinition enemyDef, EnemyDefinition baseEnemy) {
+    final delay = Duration(seconds: 7 + math.Random().nextInt(8));
+    final timer = dart_async.Timer(delay, () {
+      if (!isMounted || _activeDefinition == null) {
+        return;
+      }
+      if (_activeDefinition!.id != controller.currentMapId) {
+        return;
+      }
+      if (!_isVisible(showWhenFlag: enemyDef.showWhenFlag, hiddenWhenFlag: enemyDef.hiddenWhenFlag)) {
+        return;
+      }
+      unawaited(_spawnEnemy(enemyDef, baseEnemy));
+    });
+    _pendingRespawns.add(_PendingRespawn(timer));
   }
 
   List<Vector2> _findEnemyPath(Rect fromBodyRect, Rect targetBodyRect) {
@@ -827,10 +890,17 @@ class WorldMapManager extends Component {
               id: 'start',
               speaker: '商人',
               text: claimedGift
-                  ? '補給都準備好了，遺跡裡看到哥布林就別猶豫。'
+                  ? '補給都準備好了，缺什麼就說。'
                   : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。',
               choices: claimedGift
-                  ? const [DialogChoice(label: '知道了')]
+                  ? const [
+                      DialogChoice(label: '買治療藥水 (20G)', actionKey: 'buy_potion', nextNodeId: 'start'),
+                      DialogChoice(label: '買魔力藥水 (28G)', actionKey: 'buy_mana_potion', nextNodeId: 'start'),
+                      DialogChoice(label: '賣治療藥水', actionKey: 'sell_potion', nextNodeId: 'start'),
+                      DialogChoice(label: '賣魔力藥水', actionKey: 'sell_mana_potion', nextNodeId: 'start'),
+                      DialogChoice(label: '賣一件裝備', actionKey: 'sell_equipment', nextNodeId: 'start'),
+                      DialogChoice(label: '離開'),
+                    ]
                   : const [
                       DialogChoice(
                         label: '收下藥水',
@@ -855,9 +925,28 @@ class WorldMapManager extends Component {
             'start': DialogNode(
               id: 'start',
               speaker: '斥候',
-              text: controller.flag('has_key_01')
-                  ? '你找到鑰匙了。右側密林出口已經能通行，穿過去就是下一區。'
-                  : '右下木橋旁的補給箱裡藏著舊鑰匙。先拿到它，才能打開右側路障。',
+              text: controller.flag('can_escape_forest')
+                  ? '出口迷霧散了！趕緊回村莊報平安。'
+                  : controller.flag('has_key_01')
+                  ? '你進了迷霧森林會不斷繞回來，先找迷霧羅盤，再打倒首領。'
+                  : '右下木橋旁補給箱有舊鑰匙，先找到它再出發。',
+            ),
+          },
+        );
+      case 'trader_wanderer':
+        return const DialogTree(
+          startNodeId: 'start',
+          nodes: {
+            'start': DialogNode(
+              id: 'start',
+              speaker: '迷霧商旅',
+              text: '困在迷霧裡了吧？我這裡有貨，隱藏神裝只能打怪掉，我可不賣。',
+              choices: [
+                DialogChoice(label: '買武器箱 (120G)', actionKey: 'buy_weapon_crate', nextNodeId: 'start'),
+                DialogChoice(label: '買防具箱 (120G)', actionKey: 'buy_armor_crate', nextNodeId: 'start'),
+                DialogChoice(label: '賣一件裝備', actionKey: 'sell_equipment', nextNodeId: 'start'),
+                DialogChoice(label: '離開'),
+              ],
             ),
           },
         );
@@ -868,9 +957,11 @@ class WorldMapManager extends Component {
             'start': DialogNode(
               id: 'start',
               speaker: '遺跡精靈',
-              text: controller.flag('beat_goblin_chief')
-                  ? '封印已經穩定，帶著戰利品回村吧。'
-                  : '守門者就在前方。擊退它，這片土地才會安寧。',
+              text: controller.flag('can_escape_forest')
+                  ? '羅盤與紋章共鳴成功，出口已穩定。快回村莊！'
+                  : controller.flag('beat_forest_boss')
+                  ? '你已擊敗首領，還差迷霧羅盤才能離開。'
+                  : '出口被迷霧詛咒，必須先取回羅盤，再擊敗迷霧首領。',
             ),
           },
         );
@@ -884,12 +975,16 @@ class WorldMapManager extends Component {
             'start': DialogNode(
               id: 'start',
               speaker: '長老',
-              text: defeatedChief
-                  ? '村子得救了。這片遺跡終於安靜下來。'
+            text: controller.flag('can_escape_forest')
+              ? '你打破了迷霧迴圈，村子有救了！'
+              : defeatedChief
+              ? '你擊倒了首領，但還沒離開迷霧，先拿到羅盤。'
                   : hasKey
-                  ? '很好，舊鑰匙在你手上了。沿著右側木橋出去，把海灣的騷動壓下來。'
+              ? '很好，舊鑰匙在你手上了。進入迷霧森林後，目標是拯救村莊。'
                   : '先去商人那裡拿補給，再去右下方找到舊鑰匙。別空手往外衝。',
-              nextNodeId: defeatedChief
+            nextNodeId: controller.flag('can_escape_forest')
+              ? 'finish'
+              : defeatedChief
                   ? 'finish'
                   : (hasKey ? 'ready' : 'choice'),
               setFlagOnEnter: 'intro_seen',
@@ -912,18 +1007,24 @@ class WorldMapManager extends Component {
             'ready': const DialogNode(
               id: 'ready',
               speaker: '長老',
-              text: '蝙蝠與哥布林都怕你手上的勇氣。去吧，我會在村裡等你。',
+              text: '迷霧會把你困住，直到你帶回關鍵道具並擊敗首領。',
               nextNodeId: 'finish',
             ),
             'finish': const DialogNode(
               id: 'finish',
               speaker: '長老',
-              text: '記得按 J 攻擊、Space 互動，Esc 可以打開選單。',
+              text: '記得按 J 攻擊、Space 互動，Esc 可以打開選單。目標是拯救村莊。',
             ),
           },
         );
     }
   }
+}
+
+class _PendingRespawn {
+  const _PendingRespawn(this.timer);
+
+  final dart_async.Timer timer;
 }
 
 class _PathCell {

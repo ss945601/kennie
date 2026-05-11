@@ -23,6 +23,7 @@ class GameStateController extends ChangeNotifier {
   int level = 1;
   int experience = 0;
   int nextLevelExperience = 30;
+  int gold = 40;
   PlayerStats baseStats = const PlayerStats(
     maxHp: 64,
     hp: 64,
@@ -31,15 +32,13 @@ class GameStateController extends ChangeNotifier {
     attack: 12,
     defense: 6,
   );
-  EquipmentLoadout equipment = const EquipmentLoadout(
-    weaponId: 'bronze_sword',
-    armorId: 'cloth_armor',
-  );
+  EquipmentLoadout equipment = const EquipmentLoadout();
   final Map<String, bool> storyFlags = <String, bool>{};
   final List<InventoryEntry> inventory = <InventoryEntry>[
-    const InventoryEntry(itemId: 'potion', quantity: 2),
-    const InventoryEntry(itemId: 'bronze_sword', quantity: 1),
-    const InventoryEntry(itemId: 'cloth_armor', quantity: 1),
+    const InventoryEntry(itemId: 'potion', quantity: 2, entryId: 'potion_stack'),
+    const InventoryEntry(itemId: 'mana_potion', quantity: 1, entryId: 'mana_stack'),
+    const InventoryEntry(itemId: 'bronze_sword', quantity: 1, entryId: 'bronze_sword_legacy'),
+    const InventoryEntry(itemId: 'cloth_armor', quantity: 1, entryId: 'cloth_armor_legacy'),
   ];
 
   DialogSession? activeDialog;
@@ -53,12 +52,69 @@ class GameStateController extends ChangeNotifier {
   }
 
   PlayerStats get effectiveStats {
-    final weapon = equipment.weaponId == null ? null : itemCatalog[equipment.weaponId!];
-    final armor = equipment.armorId == null ? null : itemCatalog[equipment.armorId!];
+    final weaponEntry = _entryById(equipment.weaponEntryId);
+    final armorEntry = _entryById(equipment.armorEntryId);
+    final weapon = weaponEntry?.item;
+    final armor = armorEntry?.item;
     return baseStats.copyWith(
-      attack: baseStats.attack + (weapon?.attackBonus ?? 0),
-      defense: baseStats.defense + (armor?.defenseBonus ?? 0),
+      maxHp: baseStats.maxHp + (weaponEntry?.bonusMaxHp ?? 0) + (armorEntry?.bonusMaxHp ?? 0),
+      maxMp: baseStats.maxMp + (weaponEntry?.bonusMaxMp ?? 0) + (armorEntry?.bonusMaxMp ?? 0),
+      attack: baseStats.attack + (weapon?.attackBonus ?? 0) + (weaponEntry?.bonusAttack ?? 0) + (armorEntry?.bonusAttack ?? 0),
+      defense: baseStats.defense + (armor?.defenseBonus ?? 0) + (weaponEntry?.bonusDefense ?? 0) + (armorEntry?.bonusDefense ?? 0),
     );
+  }
+
+  InventoryEntry? _entryById(String? entryId) {
+    if (entryId == null) {
+      return null;
+    }
+    for (final entry in inventory) {
+      if (entry.stableEntryId == entryId) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  int _entryValue(InventoryEntry entry) {
+    final base = entry.item.price;
+    final bonusScore = (entry.bonusAttack + entry.bonusDefense) * 8 +
+        entry.bonusMaxHp * 2 +
+        entry.bonusMaxMp * 2;
+    final rarityMultiplier = switch (entry.rarity) {
+      ItemRarity.common => 1.0,
+      ItemRarity.uncommon => 1.2,
+      ItemRarity.rare => 1.5,
+      ItemRarity.epic => 2.1,
+      ItemRarity.legendary => 3.4,
+    };
+    return ((base + bonusScore) * rarityMultiplier).round().clamp(1, 9999);
+  }
+
+  void _ensureLegacyLoadoutBackfill() {
+    if (equipment.weaponEntryId != null || equipment.armorEntryId != null) {
+      return;
+    }
+    InventoryEntry? weaponEntry;
+    InventoryEntry? armorEntry;
+    for (final entry in inventory) {
+      if (weaponEntry == null && entry.item.type == ItemType.weapon) {
+        weaponEntry = entry;
+      }
+      if (armorEntry == null && entry.item.type == ItemType.armor) {
+        armorEntry = entry;
+      }
+    }
+    equipment = equipment.copyWith(
+      weaponEntryId: weaponEntry?.stableEntryId,
+      armorEntryId: armorEntry?.stableEntryId,
+    );
+  }
+
+  void _syncEscapeFlag() {
+    if (flag('beat_forest_boss') && flag('has_mist_compass')) {
+      storyFlags['can_escape_forest'] = true;
+    }
   }
 
   bool get isFieldInputLocked =>
@@ -70,6 +126,7 @@ class GameStateController extends ChangeNotifier {
 
   void setFlag(String key, bool value) {
     storyFlags[key] = value;
+    _syncEscapeFlag();
     notifyListeners();
   }
 
@@ -90,6 +147,7 @@ class GameStateController extends ChangeNotifier {
     level = 1;
     experience = 0;
     nextLevelExperience = 30;
+    gold = 40;
     transitionOpacity = 0;
     storyFlags
       ..clear()
@@ -97,16 +155,19 @@ class GameStateController extends ChangeNotifier {
         'intro_seen': false,
         'has_key_01': false,
         'merchant_gift_claimed': false,
+        'fog_loop_active': true,
+        'can_escape_forest': false,
       });
     inventory
       ..clear()
       ..addAll(const [
-        InventoryEntry(itemId: 'potion', quantity: 2),
-        InventoryEntry(itemId: 'bronze_sword', quantity: 1),
-        InventoryEntry(itemId: 'cloth_armor', quantity: 1),
+        InventoryEntry(itemId: 'potion', quantity: 2, entryId: 'potion_stack'),
+        InventoryEntry(itemId: 'mana_potion', quantity: 1, entryId: 'mana_stack'),
+        InventoryEntry(itemId: 'bronze_sword', quantity: 1, entryId: 'bronze_sword_legacy'),
+        InventoryEntry(itemId: 'cloth_armor', quantity: 1, entryId: 'cloth_armor_legacy'),
       ]);
     baseStats = const PlayerStats(maxHp: 64, hp: 64, maxMp: 30, mp: 30, attack: 12, defense: 6);
-    equipment = const EquipmentLoadout(weaponId: 'bronze_sword', armorId: 'cloth_armor');
+    equipment = const EquipmentLoadout(weaponEntryId: 'bronze_sword_legacy', armorEntryId: 'cloth_armor_legacy');
     hudMessage = '新冒險開始！先去和長老聊聊吧，J 揮劍、K 火球。';
     notifyListeners();
   }
@@ -120,6 +181,7 @@ class GameStateController extends ChangeNotifier {
       return false;
     }
     _applySnapshot(snapshot);
+    _syncEscapeFlag();
     showTitleMenu = false;
     hudMessage = '已載入存檔。';
     notifyListeners();
@@ -135,6 +197,7 @@ class GameStateController extends ChangeNotifier {
       level: level,
       experience: experience,
       nextLevelExperience: nextLevelExperience,
+      gold: gold,
       storyFlags: Map<String, bool>.from(storyFlags),
       inventory: List<InventoryEntry>.from(inventory),
       equipment: equipment,
@@ -154,6 +217,7 @@ class GameStateController extends ChangeNotifier {
       return false;
     }
     _applySnapshot(snapshot);
+    _syncEscapeFlag();
     hudMessage = '存檔讀取完成。';
     notifyListeners();
     return true;
@@ -167,6 +231,7 @@ class GameStateController extends ChangeNotifier {
     level = snapshot.level;
     experience = snapshot.experience;
     nextLevelExperience = snapshot.nextLevelExperience;
+    gold = snapshot.gold;
     storyFlags
       ..clear()
       ..addAll(snapshot.storyFlags);
@@ -174,6 +239,7 @@ class GameStateController extends ChangeNotifier {
       ..clear()
       ..addAll(snapshot.inventory);
     equipment = snapshot.equipment;
+    _ensureLegacyLoadoutBackfill();
     baseStats = snapshot.stats;
     activeDialog = null;
     activeBattle = null;
@@ -292,9 +358,41 @@ class GameStateController extends ChangeNotifier {
     return true;
   }
 
+  bool useManaPotionQuick() {
+    final manaPotion = itemCatalog['mana_potion'];
+    if (manaPotion == null) {
+      return false;
+    }
+    if (!consumeItem('mana_potion')) {
+      hudMessage = '沒有可用的魔力藥水。';
+      notifyListeners();
+      return false;
+    }
+    baseStats = baseStats.copyWith(
+      mp: min(baseStats.maxMp, baseStats.mp + manaPotion.manaAmount),
+    );
+    hudMessage = '你使用了魔力藥水，回復 ${manaPotion.manaAmount} MP。';
+    notifyListeners();
+    return true;
+  }
+
   void onEnemyDefeated(EnemyDefinition enemy, {String? defeatedFlag, String? messagePrefix}) {
+    final drops = <String>[];
     if (enemy.rewardItemId case final rewardItemId?) {
-      addItem(rewardItemId);
+      addItem(rewardItemId, markObtained: false);
+      drops.add(itemCatalog[rewardItemId]?.name ?? rewardItemId);
+    }
+    final rolledGold = enemy.maxGold > enemy.minGold
+        ? enemy.minGold + _random.nextInt(enemy.maxGold - enemy.minGold + 1)
+        : enemy.minGold;
+    if (rolledGold > 0) {
+      addGold(rolledGold, silent: true);
+      drops.add('$rolledGold 金幣');
+    }
+    final randomEquip = rollRandomEquipmentDrop(enemy);
+    if (randomEquip != null) {
+      addEquipmentDrop(randomEquip, rarity: _rollRarity(enemy), markObtained: true);
+      drops.add('【${itemCatalog[randomEquip]?.name ?? randomEquip}】');
     }
     if (enemy.rewardFlag case final rewardFlag?) {
       storyFlags[rewardFlag] = true;
@@ -302,10 +400,111 @@ class GameStateController extends ChangeNotifier {
     if (defeatedFlag != null) {
       storyFlags[defeatedFlag] = true;
     }
+    if (enemy.isBoss) {
+      addItem('forest_emblem', markObtained: true);
+      storyFlags['beat_forest_boss'] = true;
+      _syncEscapeFlag();
+    }
     gainExperience(enemy.experienceReward);
     final prefix = messagePrefix == null ? '' : '$messagePrefix ';
-    hudMessage = '$prefix擊敗 ${enemy.name}，獲得 ${enemy.experienceReward} EXP。';
+    final dropText = drops.isEmpty ? '' : ' 掉落: ${drops.join('、')}';
+    hudMessage = '$prefix擊敗 ${enemy.name}，獲得 ${enemy.experienceReward} EXP。$dropText';
     notifyListeners();
+  }
+
+  void addGold(int amount, {bool silent = false}) {
+    if (amount <= 0) {
+      return;
+    }
+    gold += amount;
+    if (!silent) {
+      notifyListeners();
+    }
+  }
+
+  bool spendGold(int amount, {bool silent = false}) {
+    if (amount <= 0) {
+      return true;
+    }
+    if (gold < amount) {
+      return false;
+    }
+    gold -= amount;
+    if (!silent) {
+      notifyListeners();
+    }
+    return true;
+  }
+
+  String? rollRandomEquipmentDrop(EnemyDefinition enemy) {
+    final chance = enemy.isBoss ? 1.0 : (enemy.id == 'goblin' ? 0.4 : 0.22);
+    if (_random.nextDouble() > chance) {
+      return null;
+    }
+    final pools = <String>[
+      'hunter_dagger',
+      'iron_blade',
+      'storm_lance',
+      'leather_armor',
+      'guard_mail',
+      'aegis_plate',
+      if (enemy.isBoss || level >= 8) 'mist_reaver',
+      if (enemy.isBoss || level >= 8) 'phantom_cloak',
+    ];
+    return pools[_random.nextInt(pools.length)];
+  }
+
+  ItemRarity _rollRarity(EnemyDefinition enemy) {
+    final roll = _random.nextDouble();
+    if (enemy.isBoss) {
+      if (roll < 0.14) return ItemRarity.legendary;
+      if (roll < 0.45) return ItemRarity.epic;
+      if (roll < 0.8) return ItemRarity.rare;
+      return ItemRarity.uncommon;
+    }
+    if (roll < 0.02) return ItemRarity.legendary;
+    if (roll < 0.1) return ItemRarity.epic;
+    if (roll < 0.3) return ItemRarity.rare;
+    if (roll < 0.65) return ItemRarity.uncommon;
+    return ItemRarity.common;
+  }
+
+  void addEquipmentDrop(
+    String itemId, {
+    required ItemRarity rarity,
+    bool markObtained = false,
+  }) {
+    final affix = _generateAffix(rarity);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final entry = InventoryEntry(
+      itemId: itemId,
+      quantity: 1,
+      entryId: '${itemId}_$now${_random.nextInt(999)}',
+      rarity: rarity,
+      bonusAttack: affix.bonusAttack,
+      bonusDefense: affix.bonusDefense,
+      bonusMaxHp: affix.bonusMaxHp,
+      bonusMaxMp: affix.bonusMaxMp,
+      justObtained: markObtained,
+    );
+    inventory.add(entry);
+  }
+
+  _AffixRoll _generateAffix(ItemRarity rarity) {
+    final base = switch (rarity) {
+      ItemRarity.common => 0,
+      ItemRarity.uncommon => 1,
+      ItemRarity.rare => 2,
+      ItemRarity.epic => 4,
+      ItemRarity.legendary => 7,
+    };
+    final variance = base == 0 ? 1 : (base + _random.nextInt(base + 2));
+    return _AffixRoll(
+      bonusAttack: _random.nextInt(variance + 1),
+      bonusDefense: _random.nextInt(variance + 1),
+      bonusMaxHp: _random.nextInt(variance * 3 + 1),
+      bonusMaxMp: _random.nextInt(variance * 2 + 1),
+    );
   }
 
   void gainExperience(int amount) {
@@ -355,11 +554,14 @@ class GameStateController extends ChangeNotifier {
   }
 
   void chooseDialogChoice(DialogChoice choice) {
+    if (choice.actionKey case final action?) {
+      _runDialogAction(action);
+    }
     if (choice.setFlagKey case final key?) {
       storyFlags[key] = true;
     }
     if (choice.giveItemId case final itemId?) {
-      addItem(itemId);
+      addItem(itemId, markObtained: true);
     }
     if (choice.startBattleId case final enemyId?) {
       activeDialog = null;
@@ -380,6 +582,111 @@ class GameStateController extends ChangeNotifier {
     }
     activeDialog = session.copyWith(currentNodeId: nextNode.id);
     _applyNodeSideEffects(nextNode);
+    notifyListeners();
+  }
+
+  void _runDialogAction(String action) {
+    switch (action) {
+      case 'buy_potion':
+        _buyFromShop('potion', 20);
+        break;
+      case 'buy_mana_potion':
+        _buyFromShop('mana_potion', 28);
+        break;
+      case 'buy_weapon_crate':
+        _buyRandomShopEquipment(weaponOnly: true, price: 120);
+        break;
+      case 'buy_armor_crate':
+        _buyRandomShopEquipment(weaponOnly: false, price: 120);
+        break;
+      case 'sell_potion':
+        _sellToShop('potion');
+        break;
+      case 'sell_mana_potion':
+        _sellToShop('mana_potion');
+        break;
+      case 'sell_equipment':
+        _sellOneEquipment();
+        break;
+      case 'toggle_fog_goal_hint':
+        hudMessage = '迷霧出口會把你傳回來，先擊敗迷霧統御者並取得迷霧羅盤。';
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _buyFromShop(String itemId, int price) {
+    if (!spendGold(price, silent: true)) {
+      hudMessage = '金幣不足，無法購買。';
+      notifyListeners();
+      return;
+    }
+    addItem(itemId, markObtained: true, silent: true);
+    hudMessage = '購買 ${itemCatalog[itemId]?.name ?? itemId} 成功，花費 $price 金幣。';
+    notifyListeners();
+  }
+
+  void _buyRandomShopEquipment({required bool weaponOnly, required int price}) {
+    if (!spendGold(price, silent: true)) {
+      hudMessage = '金幣不足，無法購買裝備。';
+      notifyListeners();
+      return;
+    }
+    final pool = itemCatalog.values.where((item) {
+      if (item.hiddenDropOnly) {
+        return false;
+      }
+      if (weaponOnly) {
+        return item.type == ItemType.weapon;
+      }
+      return item.type == ItemType.armor;
+    }).toList(growable: false);
+    final selected = pool[_random.nextInt(pool.length)];
+    addEquipmentDrop(
+      selected.id,
+      rarity: _random.nextDouble() < 0.2 ? ItemRarity.rare : ItemRarity.uncommon,
+      markObtained: true,
+    );
+    hudMessage = '購買裝備箱成功，獲得 ${selected.name}。';
+    notifyListeners();
+  }
+
+  void _sellToShop(String itemId) {
+    final index = inventory.indexWhere((entry) => entry.itemId == itemId);
+    if (index == -1) {
+      hudMessage = '你沒有可販售的 ${itemCatalog[itemId]?.name ?? itemId}。';
+      notifyListeners();
+      return;
+    }
+    final entry = inventory[index];
+    final sellPrice = max(1, _entryValue(entry) ~/ 2);
+    consumeItem(itemId, silent: true);
+    addGold(sellPrice, silent: true);
+    hudMessage = '已販售 ${entry.item.name}，獲得 $sellPrice 金幣。';
+    notifyListeners();
+  }
+
+  void _sellOneEquipment() {
+    final equipmentIndex = inventory.indexWhere((entry) {
+      if (!entry.isEquipment) {
+        return false;
+      }
+      if (entry.stableEntryId == equipment.weaponEntryId ||
+          entry.stableEntryId == equipment.armorEntryId) {
+        return false;
+      }
+      return true;
+    });
+    if (equipmentIndex == -1) {
+      hudMessage = '沒有可販售的未裝備裝備。';
+      notifyListeners();
+      return;
+    }
+    final entry = inventory.removeAt(equipmentIndex);
+    final sellPrice = max(6, _entryValue(entry) ~/ 2);
+    addGold(sellPrice, silent: true);
+    hudMessage = '販售 ${entry.item.name}，獲得 $sellPrice 金幣。';
     notifyListeners();
   }
 
@@ -494,18 +801,41 @@ class GameStateController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addItem(String itemId, {int quantity = 1}) {
+  void addItem(String itemId, {int quantity = 1, bool markObtained = false, bool silent = false}) {
+    final item = itemCatalog[itemId];
+    if (item == null) {
+      return;
+    }
+    if (item.type == ItemType.weapon || item.type == ItemType.armor) {
+      addEquipmentDrop(itemId, rarity: ItemRarity.common, markObtained: markObtained);
+      if (!silent) {
+        notifyListeners();
+      }
+      return;
+    }
     final index = inventory.indexWhere((entry) => entry.itemId == itemId);
     if (index == -1) {
-      inventory.add(InventoryEntry(itemId: itemId, quantity: quantity));
+      inventory.add(
+        InventoryEntry(
+          itemId: itemId,
+          quantity: quantity,
+          entryId: '${itemId}_stack',
+          justObtained: markObtained,
+        ),
+      );
     } else {
       final existing = inventory[index];
-      inventory[index] = existing.copyWith(quantity: existing.quantity + quantity);
+      inventory[index] = existing.copyWith(
+        quantity: existing.quantity + quantity,
+        justObtained: markObtained || existing.justObtained,
+      );
     }
-    notifyListeners();
+    if (!silent) {
+      notifyListeners();
+    }
   }
 
-  bool consumeItem(String itemId, {int quantity = 1}) {
+  bool consumeItem(String itemId, {int quantity = 1, bool silent = false}) {
     final index = inventory.indexWhere((entry) => entry.itemId == itemId);
     if (index == -1) {
       return false;
@@ -520,22 +850,25 @@ class GameStateController extends ChangeNotifier {
     } else {
       inventory[index] = entry.copyWith(quantity: remaining);
     }
-    notifyListeners();
+    if (!silent) {
+      notifyListeners();
+    }
     return true;
   }
 
-  void equipItem(String itemId) {
-    final item = itemCatalog[itemId];
-    if (item == null) {
+  void equipItem(String entryId) {
+    final entry = _entryById(entryId);
+    final item = entry?.item;
+    if (entry == null || item == null) {
       return;
     }
     switch (item.type) {
       case ItemType.weapon:
-        equipment = equipment.copyWith(weaponId: itemId);
+        equipment = equipment.copyWith(weaponEntryId: entry.stableEntryId);
         hudMessage = '已裝備 ${item.name}。';
         break;
       case ItemType.armor:
-        equipment = equipment.copyWith(armorId: itemId);
+        equipment = equipment.copyWith(armorEntryId: entry.stableEntryId);
         hudMessage = '已裝備 ${item.name}。';
         break;
       case ItemType.consumable:
@@ -545,4 +878,31 @@ class GameStateController extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void clearObtainedHighlights() {
+    var changed = false;
+    for (var i = 0; i < inventory.length; i += 1) {
+      if (inventory[i].justObtained) {
+        inventory[i] = inventory[i].copyWith(justObtained: false);
+        changed = true;
+      }
+    }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+}
+
+class _AffixRoll {
+  const _AffixRoll({
+    required this.bonusAttack,
+    required this.bonusDefense,
+    required this.bonusMaxHp,
+    required this.bonusMaxMp,
+  });
+
+  final int bonusAttack;
+  final int bonusDefense;
+  final int bonusMaxHp;
+  final int bonusMaxMp;
 }

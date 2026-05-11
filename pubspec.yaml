@@ -33,6 +33,7 @@ flutter:
     - assets/images/npc/
     - assets/images/player/
     - assets/images/enemy/
+    - assets/images/characters/Enemy/
     - assets/images/tiled/punnyworld/
     - assets/images/items/
     - assets/images/tile/

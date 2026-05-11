@@ -32,8 +32,21 @@ class PauseMenuOverlay extends StatelessWidget {
                   child: Consumer<GameStateController>(
                     builder: (context, controller, _) {
                       final stats = controller.effectiveStats;
+                      InventoryEntry? equippedWeapon;
+                      InventoryEntry? equippedArmor;
+                      for (final entry in controller.inventory) {
+                        if (entry.stableEntryId == controller.equipment.weaponEntryId) {
+                          equippedWeapon = entry;
+                        }
+                        if (entry.stableEntryId == controller.equipment.armorEntryId) {
+                          equippedArmor = entry;
+                        }
+                      }
                       final potionCount = controller.inventory
                           .where((entry) => entry.itemId == 'potion')
+                          .fold<int>(0, (total, entry) => total + entry.quantity);
+                      final manaPotionCount = controller.inventory
+                          .where((entry) => entry.itemId == 'mana_potion')
                           .fold<int>(0, (total, entry) => total + entry.quantity);
                       return DefaultTabController(
                         length: 3,
@@ -51,6 +64,26 @@ class PauseMenuOverlay extends StatelessWidget {
                                           fontWeight: FontWeight.w700,
                                           fontSize: ui.compact ? 20 : null,
                                         ),
+                                  ),
+                                ),
+                                Container(
+                                  margin: EdgeInsets.only(right: ui.value(10, compactValue: 6)),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: ui.value(10, compactValue: 8),
+                                    vertical: ui.value(6, compactValue: 4),
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E2F22),
+                                    borderRadius: BorderRadius.circular(ui.radius(10, compactValue: 8)),
+                                    border: Border.all(color: const Color(0x77D7B95C)),
+                                  ),
+                                  child: Text(
+                                    '金幣 ${controller.gold}',
+                                    style: TextStyle(
+                                      color: const Color(0xFFFFE79A),
+                                      fontSize: ui.font(14, compactValue: 11),
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                                 OutlinedButton(
@@ -96,6 +129,10 @@ class PauseMenuOverlay extends StatelessWidget {
                                               onPressed: controller.usePotionQuick,
                                               child: Text('藥水 x$potionCount', style: TextStyle(fontSize: ui.compact ? 12 : null)),
                                             ),
+                                            FilledButton.tonal(
+                                              onPressed: controller.useManaPotionQuick,
+                                              child: Text('魔力藥水 x$manaPotionCount', style: TextStyle(fontSize: ui.compact ? 12 : null)),
+                                            ),
                                             OutlinedButton(
                                               onPressed: controller.returnToTitleMenu,
                                               child: Text('回初始選單', style: TextStyle(fontSize: ui.compact ? 12 : null)),
@@ -130,16 +167,34 @@ class PauseMenuOverlay extends StatelessWidget {
                                     itemBuilder: (context, index) {
                                       final entry = controller.inventory[index];
                                       final item = entry.item;
+                                      final isEquipped = controller.equipment.weaponEntryId == entry.stableEntryId ||
+                                          controller.equipment.armorEntryId == entry.stableEntryId;
+                                      final rarityColor = switch (entry.rarity) {
+                                        ItemRarity.common => Colors.white,
+                                        ItemRarity.uncommon => const Color(0xFFB0FFC0),
+                                        ItemRarity.rare => const Color(0xFF8FD5FF),
+                                        ItemRarity.epic => const Color(0xFFE4A4FF),
+                                        ItemRarity.legendary => const Color(0xFFFFD27B),
+                                      };
+                                      final highlightedColor = entry.justObtained
+                                          ? const Color(0xFFFF5E5E)
+                                          : rarityColor;
+                                      final affixText = <String>[
+                                        if (entry.bonusAttack > 0) 'ATK+${entry.bonusAttack}',
+                                        if (entry.bonusDefense > 0) 'DEF+${entry.bonusDefense}',
+                                        if (entry.bonusMaxHp > 0) 'HP+${entry.bonusMaxHp}',
+                                        if (entry.bonusMaxMp > 0) 'MP+${entry.bonusMaxMp}',
+                                      ].join('  ');
                                       return ListTile(
                                         dense: ui.compact,
                                         visualDensity: ui.compact ? VisualDensity.compact : VisualDensity.standard,
                                         contentPadding: EdgeInsets.zero,
                                         title: Text(
-                                          item.name,
-                                          style: TextStyle(color: Colors.white, fontSize: ui.font(14, compactValue: 12)),
+                                          '${entry.justObtained ? '!! ' : ''}${item.name}${isEquipped ? ' (已裝備)' : ''}',
+                                          style: TextStyle(color: highlightedColor, fontSize: ui.font(14, compactValue: 12)),
                                         ),
                                         subtitle: Text(
-                                          item.description,
+                                          affixText.isEmpty ? item.description : '${item.description}\n$affixText',
                                           style: TextStyle(color: Colors.white70, fontSize: ui.font(12, compactValue: 10.5)),
                                         ),
                                         trailing: Row(
@@ -152,12 +207,14 @@ class PauseMenuOverlay extends StatelessWidget {
                                             SizedBox(width: ui.value(8, compactValue: 4)),
                                             if (item.type == ItemType.weapon || item.type == ItemType.armor)
                                               TextButton(
-                                                onPressed: () => controller.equipItem(item.id),
+                                                onPressed: () => controller.equipItem(entry.stableEntryId),
                                                 child: Text('裝備', style: TextStyle(fontSize: ui.compact ? 11 : null)),
                                               )
                                             else if (item.type == ItemType.consumable)
                                               TextButton(
-                                                onPressed: controller.usePotionQuick,
+                                                onPressed: item.id == 'mana_potion'
+                                                    ? controller.useManaPotionQuick
+                                                    : controller.usePotionQuick,
                                                 child: Text('使用', style: TextStyle(fontSize: ui.compact ? 11 : null)),
                                               ),
                                           ],
@@ -207,12 +264,16 @@ class PauseMenuOverlay extends StatelessWidget {
                                             SizedBox(height: ui.value(8, compactValue: 6)),
                                             _InfoLine(
                                               label: '武器',
-                                              value: itemCatalog[controller.equipment.weaponId]?.name ?? '-',
+                                              value: equippedWeapon == null
+                                                  ? '-'
+                                                  : _equipmentLabel(equippedWeapon),
                                               compact: ui.compact,
                                             ),
                                             _InfoLine(
                                               label: '防具',
-                                              value: itemCatalog[controller.equipment.armorId]?.name ?? '-',
+                                              value: equippedArmor == null
+                                                  ? '-'
+                                                  : _equipmentLabel(equippedArmor),
                                               compact: ui.compact,
                                             ),
                                             SizedBox(height: ui.value(12, compactValue: 8)),
@@ -283,4 +344,17 @@ class _InfoLine extends StatelessWidget {
       ),
     );
   }
+}
+
+String _equipmentLabel(InventoryEntry entry) {
+  final affixText = <String>[
+    if (entry.bonusAttack > 0) 'ATK+${entry.bonusAttack}',
+    if (entry.bonusDefense > 0) 'DEF+${entry.bonusDefense}',
+    if (entry.bonusMaxHp > 0) 'HP+${entry.bonusMaxHp}',
+    if (entry.bonusMaxMp > 0) 'MP+${entry.bonusMaxMp}',
+  ].join('/');
+  if (affixText.isEmpty) {
+    return entry.item.name;
+  }
+  return '${entry.item.name} [$affixText]';
 }

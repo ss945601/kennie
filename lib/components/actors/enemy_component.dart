@@ -53,13 +53,17 @@ class EnemyComponent extends PositionComponent {
     await super.onLoad();
     _maxHp = definition.maxHp;
     _currentHp = definition.maxHp;
+    final usesCharacterEnemySheet =
+        definition.spriteSheet.startsWith('characters/Enemy/');
     _sprite = SpriteAnimationComponent(
       animation: await SpriteAnimation.load(
         definition.spriteSheet,
         SpriteAnimationData.sequenced(
-          amount: 6,
+          amount: usesCharacterEnemySheet ? 3 : 6,
           stepTime: 0.12,
-          textureSize: definition.spriteSheet.contains('/') ? Vector2.all(16) : Vector2.all(64),
+          textureSize: usesCharacterEnemySheet
+              ? Vector2.all(32)
+              : Vector2.all(16),
         ),
       ),
       size: size,
