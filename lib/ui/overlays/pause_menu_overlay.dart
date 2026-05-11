@@ -20,15 +20,18 @@ class PauseMenuOverlay extends StatelessWidget {
     return ColoredBox(
       color: const Color(0xA0000000),
       child: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: ui.all(16, compactValue: 10),
+        child: Padding(
+          padding: ui.all(12, compactValue: 8),
+          child: Center(
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: ui.stackedLayout ? 640 : 860),
+              constraints: BoxConstraints(
+                maxWidth: ui.stackedLayout ? 600 : 780,
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
               child: Card(
                 color: const Color(0xF0121826),
                 child: Padding(
-                  padding: ui.all(22, compactValue: 12),
+                  padding: ui.all(14, compactValue: 9),
                   child: Consumer<GameStateController>(
                     builder: (context, controller, _) {
                       final stats = controller.effectiveStats;
@@ -42,70 +45,91 @@ class PauseMenuOverlay extends StatelessWidget {
                           equippedArmor = entry;
                         }
                       }
+
                       final potionCount = controller.inventory
                           .where((entry) => entry.itemId == 'potion')
                           .fold<int>(0, (total, entry) => total + entry.quantity);
                       final manaPotionCount = controller.inventory
                           .where((entry) => entry.itemId == 'mana_potion')
                           .fold<int>(0, (total, entry) => total + entry.quantity);
+
                       return DefaultTabController(
                         length: 3,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisSize: MainAxisSize.max,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '冒險暫停',
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: ui.compact ? 20 : null,
-                                        ),
-                                  ),
-                                ),
-                                Container(
-                                  margin: EdgeInsets.only(right: ui.value(10, compactValue: 6)),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: ui.value(10, compactValue: 8),
-                                    vertical: ui.value(6, compactValue: 4),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1E2F22),
-                                    borderRadius: BorderRadius.circular(ui.radius(10, compactValue: 8)),
-                                    border: Border.all(color: const Color(0x77D7B95C)),
-                                  ),
-                                  child: Text(
-                                    '金幣 ${controller.gold}',
-                                    style: TextStyle(
-                                      color: const Color(0xFFFFE79A),
-                                      fontSize: ui.font(14, compactValue: 11),
+                            if (ui.stackedLayout) ...[
+                              Text(
+                                '冒險暫停',
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      color: Colors.white,
                                       fontWeight: FontWeight.w700,
+                                      fontSize: ui.font(20, compactValue: 16),
+                                    ),
+                              ),
+                              SizedBox(height: ui.value(8, compactValue: 6)),
+                              Row(
+                                children: [
+                                  _goldPill(controller: controller, ui: ui),
+                                  const Spacer(),
+                                  OutlinedButton(
+                                    onPressed: controller.closePauseMenu,
+                                    child: Text(
+                                      '返回戰場',
+                                      style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
                                     ),
                                   ),
-                                ),
-                                OutlinedButton(
-                                  onPressed: controller.closePauseMenu,
-                                  child: Text('返回戰場', style: TextStyle(fontSize: ui.compact ? 12 : null)),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: ui.value(14, compactValue: 10)),
+                                ],
+                              ),
+                            ] else
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '冒險暫停',
+                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: ui.font(20, compactValue: 16),
+                                          ),
+                                    ),
+                                  ),
+                                  _goldPill(controller: controller, ui: ui),
+                                  OutlinedButton(
+                                    onPressed: controller.closePauseMenu,
+                                    child: Text(
+                                      '返回戰場',
+                                      style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            SizedBox(height: ui.value(10, compactValue: 7)),
                             TabBar(
                               labelColor: Colors.white,
                               unselectedLabelColor: Colors.white70,
                               indicatorColor: Colors.white,
+                              labelStyle: TextStyle(
+                                fontSize: ui.font(13, compactValue: 11),
+                                fontWeight: FontWeight.w600,
+                              ),
+                              unselectedLabelStyle: TextStyle(
+                                fontSize: ui.font(12, compactValue: 10.5),
+                                fontWeight: FontWeight.w500,
+                              ),
+                              labelPadding: EdgeInsets.symmetric(
+                                horizontal: ui.value(8, compactValue: 4),
+                              ),
+                              indicatorWeight: 2,
                               tabs: const [
                                 Tab(text: '操作'),
                                 Tab(text: '背包'),
                                 Tab(text: '戰鬥資料'),
                               ],
                             ),
-                            SizedBox(height: ui.value(10, compactValue: 8)),
-                            SizedBox(
-                              height: ui.value(420, compactValue: 440),
+                            SizedBox(height: ui.value(8, compactValue: 6)),
+                            Expanded(
                               child: TabBarView(
                                 children: [
                                   SingleChildScrollView(
@@ -119,23 +143,38 @@ class PauseMenuOverlay extends StatelessWidget {
                                           children: [
                                             FilledButton(
                                               onPressed: game.saveGame,
-                                              child: Text('存檔', style: TextStyle(fontSize: ui.compact ? 12 : null)),
+                                              child: Text(
+                                                '存檔',
+                                                style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
+                                              ),
                                             ),
                                             FilledButton.tonal(
                                               onPressed: game.loadGame,
-                                              child: Text('讀檔', style: TextStyle(fontSize: ui.compact ? 12 : null)),
+                                              child: Text(
+                                                '讀檔',
+                                                style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
+                                              ),
                                             ),
                                             FilledButton.tonal(
                                               onPressed: controller.usePotionQuick,
-                                              child: Text('藥水 x$potionCount', style: TextStyle(fontSize: ui.compact ? 12 : null)),
+                                              child: Text(
+                                                '藥水 x$potionCount',
+                                                style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
+                                              ),
                                             ),
                                             FilledButton.tonal(
                                               onPressed: controller.useManaPotionQuick,
-                                              child: Text('魔力藥水 x$manaPotionCount', style: TextStyle(fontSize: ui.compact ? 12 : null)),
+                                              child: Text(
+                                                '魔力藥水 x$manaPotionCount',
+                                                style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
+                                              ),
                                             ),
                                             OutlinedButton(
                                               onPressed: controller.returnToTitleMenu,
-                                              child: Text('回初始選單', style: TextStyle(fontSize: ui.compact ? 12 : null)),
+                                              child: Text(
+                                                '回初始選單',
+                                                style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -143,7 +182,9 @@ class PauseMenuOverlay extends StatelessWidget {
                                         DecoratedBox(
                                           decoration: BoxDecoration(
                                             color: const Color(0x991C2434),
-                                            borderRadius: BorderRadius.circular(ui.radius(14, compactValue: 12)),
+                                            borderRadius: BorderRadius.circular(
+                                              ui.radius(14, compactValue: 12),
+                                            ),
                                             border: Border.all(color: Colors.white12),
                                           ),
                                           child: Padding(
@@ -162,12 +203,17 @@ class PauseMenuOverlay extends StatelessWidget {
                                     ),
                                   ),
                                   ListView.separated(
+                                    primary: false,
+                                    physics: const AlwaysScrollableScrollPhysics(
+                                      parent: ClampingScrollPhysics(),
+                                    ),
                                     itemCount: controller.inventory.length,
                                     separatorBuilder: (_, _) => const Divider(color: Colors.white12),
                                     itemBuilder: (context, index) {
                                       final entry = controller.inventory[index];
                                       final item = entry.item;
-                                      final isEquipped = controller.equipment.weaponEntryId == entry.stableEntryId ||
+                                      final isEquipped =
+                                          controller.equipment.weaponEntryId == entry.stableEntryId ||
                                           controller.equipment.armorEntryId == entry.stableEntryId;
                                       final rarityColor = switch (entry.rarity) {
                                         ItemRarity.common => Colors.white,
@@ -176,46 +222,71 @@ class PauseMenuOverlay extends StatelessWidget {
                                         ItemRarity.epic => const Color(0xFFE4A4FF),
                                         ItemRarity.legendary => const Color(0xFFFFD27B),
                                       };
-                                      final highlightedColor = entry.justObtained
-                                          ? const Color(0xFFFF5E5E)
-                                          : rarityColor;
+                                      final highlightedColor =
+                                          entry.justObtained ? const Color(0xFFFF5E5E) : rarityColor;
                                       final affixText = <String>[
                                         if (entry.bonusAttack > 0) 'ATK+${entry.bonusAttack}',
                                         if (entry.bonusDefense > 0) 'DEF+${entry.bonusDefense}',
                                         if (entry.bonusMaxHp > 0) 'HP+${entry.bonusMaxHp}',
                                         if (entry.bonusMaxMp > 0) 'MP+${entry.bonusMaxMp}',
                                       ].join('  ');
+
                                       return ListTile(
                                         dense: ui.compact,
-                                        visualDensity: ui.compact ? VisualDensity.compact : VisualDensity.standard,
+                                        visualDensity: ui.compact
+                                            ? VisualDensity.compact
+                                            : VisualDensity.standard,
                                         contentPadding: EdgeInsets.zero,
                                         title: Text(
                                           '${entry.justObtained ? '!! ' : ''}${item.name}${isEquipped ? ' (已裝備)' : ''}',
-                                          style: TextStyle(color: highlightedColor, fontSize: ui.font(14, compactValue: 12)),
+                                          style: TextStyle(
+                                            color: highlightedColor,
+                                            fontSize: ui.font(14, compactValue: 12),
+                                          ),
                                         ),
                                         subtitle: Text(
-                                          affixText.isEmpty ? item.description : '${item.description}\n$affixText',
-                                          style: TextStyle(color: Colors.white70, fontSize: ui.font(12, compactValue: 10.5)),
+                                          affixText.isEmpty
+                                              ? item.description
+                                              : '${item.description}\n$affixText',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: ui.font(12, compactValue: 10.5),
+                                          ),
                                         ),
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
                                               'x${entry.quantity}',
-                                              style: TextStyle(color: Colors.white, fontSize: ui.font(14, compactValue: 11)),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: ui.font(14, compactValue: 11),
+                                              ),
                                             ),
                                             SizedBox(width: ui.value(8, compactValue: 4)),
-                                            if (item.type == ItemType.weapon || item.type == ItemType.armor)
+                                            if (item.type == ItemType.weapon ||
+                                                item.type == ItemType.armor)
                                               TextButton(
-                                                onPressed: () => controller.equipItem(entry.stableEntryId),
-                                                child: Text('裝備', style: TextStyle(fontSize: ui.compact ? 11 : null)),
+                                                onPressed: () =>
+                                                    controller.equipItem(entry.stableEntryId),
+                                                child: Text(
+                                                  '裝備',
+                                                  style: TextStyle(
+                                                    fontSize: ui.font(11, compactValue: 9.5),
+                                                  ),
+                                                ),
                                               )
                                             else if (item.type == ItemType.consumable)
                                               TextButton(
                                                 onPressed: item.id == 'mana_potion'
                                                     ? controller.useManaPotionQuick
                                                     : controller.usePotionQuick,
-                                                child: Text('使用', style: TextStyle(fontSize: ui.compact ? 11 : null)),
+                                                child: Text(
+                                                  '使用',
+                                                  style: TextStyle(
+                                                    fontSize: ui.font(11, compactValue: 9.5),
+                                                  ),
+                                                ),
                                               ),
                                           ],
                                         ),
@@ -227,7 +298,9 @@ class PauseMenuOverlay extends StatelessWidget {
                                     child: DecoratedBox(
                                       decoration: BoxDecoration(
                                         color: const Color(0x991C2434),
-                                        borderRadius: BorderRadius.circular(ui.radius(18, compactValue: 14)),
+                                        borderRadius: BorderRadius.circular(
+                                          ui.radius(18, compactValue: 14),
+                                        ),
                                         border: Border.all(color: Colors.white12),
                                       ),
                                       child: Padding(
@@ -243,16 +316,37 @@ class PauseMenuOverlay extends StatelessWidget {
                                                   ),
                                             ),
                                             SizedBox(height: ui.value(12, compactValue: 8)),
-                                            _InfoLine(label: '等級', value: 'Lv.${controller.level}', compact: ui.compact),
                                             _InfoLine(
-                                              label: '經驗值',
-                                              value: '${controller.experience}/${controller.nextLevelExperience}',
+                                              label: '等級',
+                                              value: 'Lv.${controller.level}',
                                               compact: ui.compact,
                                             ),
-                                            _InfoLine(label: 'HP', value: '${stats.hp}/${stats.maxHp}', compact: ui.compact),
-                                            _InfoLine(label: 'MP', value: '${stats.mp}/${stats.maxMp}', compact: ui.compact),
-                                            _InfoLine(label: '攻擊', value: '${stats.attack}', compact: ui.compact),
-                                            _InfoLine(label: '防禦', value: '${stats.defense}', compact: ui.compact),
+                                            _InfoLine(
+                                              label: '經驗值',
+                                              value:
+                                                  '${controller.experience}/${controller.nextLevelExperience}',
+                                              compact: ui.compact,
+                                            ),
+                                            _InfoLine(
+                                              label: 'HP',
+                                              value: '${stats.hp}/${stats.maxHp}',
+                                              compact: ui.compact,
+                                            ),
+                                            _InfoLine(
+                                              label: 'MP',
+                                              value: '${stats.mp}/${stats.maxMp}',
+                                              compact: ui.compact,
+                                            ),
+                                            _InfoLine(
+                                              label: '攻擊',
+                                              value: '${stats.attack}',
+                                              compact: ui.compact,
+                                            ),
+                                            _InfoLine(
+                                              label: '防禦',
+                                              value: '${stats.defense}',
+                                              compact: ui.compact,
+                                            ),
                                             SizedBox(height: ui.value(12, compactValue: 8)),
                                             Text(
                                               '裝備',
@@ -316,6 +410,40 @@ class PauseMenuOverlay extends StatelessWidget {
   }
 }
 
+class _goldPill extends StatelessWidget {
+  const _goldPill({
+    required this.controller,
+    required this.ui,
+  });
+
+  final GameStateController controller;
+  final OverlayUiConfig ui;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(right: ui.value(10, compactValue: 6)),
+      padding: EdgeInsets.symmetric(
+        horizontal: ui.value(10, compactValue: 8),
+        vertical: ui.value(6, compactValue: 4),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2F22),
+        borderRadius: BorderRadius.circular(ui.radius(10, compactValue: 8)),
+        border: Border.all(color: const Color(0x77D7B95C)),
+      ),
+      child: Text(
+        '金幣 ${controller.gold}',
+        style: TextStyle(
+          color: const Color(0xFFFFE79A),
+          fontSize: ui.font(14, compactValue: 11),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoLine extends StatelessWidget {
   const _InfoLine({
     required this.label,
@@ -335,10 +463,16 @@ class _InfoLine extends StatelessWidget {
         children: [
           SizedBox(
             width: compact ? 44 : 56,
-            child: Text(label, style: TextStyle(color: Colors.white54, fontSize: compact ? 10 : 14)),
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.white54, fontSize: compact ? 10 : 14),
+            ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.white, fontSize: compact ? 10.5 : 14)),
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.white, fontSize: compact ? 10.5 : 14),
+            ),
           ),
         ],
       ),
