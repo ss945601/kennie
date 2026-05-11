@@ -4,12 +4,13 @@ class PlayerAttackEffect extends PositionComponent {
   PlayerAttackEffect({
     required this.direction,
     required Vector2 position,
+    double effectSize = 44,
   }) : super(
-          position: position,
-          size: Vector2.all(44),
-          anchor: Anchor.center,
-          priority: 2500,
-        );
+         position: position,
+         size: Vector2.all(effectSize),
+         anchor: Anchor.center,
+         priority: 2500,
+       );
 
   final Vector2 direction;
 

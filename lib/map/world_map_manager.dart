@@ -46,7 +46,7 @@ class WorldMapManager extends Component {
       <EnemyComponent, double>{};
   final Map<EnemyComponent, double> _enemySkillCooldown =
       <EnemyComponent, double>{};
-    final Map<EnemyComponent, _ElderDemonLordSkillPattern> _elderSkillPattern =
+  final Map<EnemyComponent, _ElderDemonLordSkillPattern> _elderSkillPattern =
       <EnemyComponent, _ElderDemonLordSkillPattern>{};
   final List<_PendingRespawn> _pendingRespawns = <_PendingRespawn>[];
   MapDefinition? _activeDefinition;
@@ -62,10 +62,18 @@ class WorldMapManager extends Component {
   bool _teleportLatch = false;
   int _seenEquipmentPickupSerial = 0;
 
+  static final List<Vector2> _whirlwindDirections = <Vector2>[
+    Vector2(1, 0),
+    Vector2(-1, 0),
+    Vector2(0, -1),
+    Vector2(0, 1),
+  ];
+
   @override
   Future<void> onLoad() async {
     await add(_sceneRoot);
-    controller.onNodeFlagSet = (key) => unawaited(_spawnEnemiesUnlockedByFlag(key));
+    controller.onNodeFlagSet = (key) =>
+        unawaited(_spawnEnemiesUnlockedByFlag(key));
   }
 
   Future<void> loadMap(
@@ -182,16 +190,31 @@ class WorldMapManager extends Component {
     if (!player.tryAttack()) {
       return;
     }
+    final attackProfile = _currentMeleeAttackProfile();
+    final directions = _currentMeleeAttackDirections(attackProfile.mode);
     unawaited(AudioManager.instance.playSwordHitSfx());
-    await _sceneRoot.add(
-      PlayerAttackEffect(
-        direction: player.aimDirection,
-        position: player.attackEffectOrigin,
-      ),
-    );
-    final hitEnemies = _enemies
-        .where(_isEnemyInPlayerMeleeRange)
-        .toList();
+    for (final direction in directions) {
+      await _sceneRoot.add(
+        PlayerAttackEffect(
+          direction: direction,
+          position: _attackEffectOriginFor(
+            direction,
+            distance: attackProfile.effectDistance,
+          ),
+          effectSize: attackProfile.effectSize,
+        ),
+      );
+    }
+    final hitDirections = <EnemyComponent, Vector2>{};
+    for (final enemy in _enemies) {
+      for (final direction in directions) {
+        if (_isEnemyInPlayerMeleeRange(enemy, direction, attackProfile)) {
+          hitDirections[enemy] = direction;
+          break;
+        }
+      }
+    }
+    final hitEnemies = hitDirections.keys.toList();
     if (hitEnemies.isEmpty) {
       controller.setHudMessage('你揮空了。');
       return;
@@ -199,7 +222,7 @@ class WorldMapManager extends Component {
 
     for (final enemy in hitEnemies) {
       final damage = controller.rollPlayerDamage(enemy.definition.defense);
-      enemy.applyKnockback(player.aimDirection, distance: 18);
+      enemy.applyKnockback(hitDirections[enemy]!, distance: 18);
       _showDamageNumber(
         position: _enemyDamagePosition(enemy),
         amount: damage,
@@ -207,18 +230,30 @@ class WorldMapManager extends Component {
       );
       final defeated = await enemy.receiveDamage(damage);
       if (!defeated) {
-        controller.setHudMessage('命中 ${enemy.definition.name}，造成 $damage 點傷害。');
+        final prefix = switch (attackProfile.mode) {
+          _MeleeAttackMode.basic => '命中',
+          _MeleeAttackMode.extended => '強化斬擊命中',
+          _MeleeAttackMode.whirlwind => '旋風斬命中',
+        };
+        controller.setHudMessage(
+          '$prefix ${enemy.definition.name}，造成 $damage 點傷害。',
+        );
       }
     }
   }
 
-  bool _isEnemyInPlayerMeleeRange(EnemyComponent enemy) {
+  bool _isEnemyInPlayerMeleeRange(
+    EnemyComponent enemy,
+    Vector2 direction,
+    _MeleeAttackProfile profile,
+  ) {
     if (!enemy.isMounted) {
       return false;
     }
 
-    // Keep the directional hitbox, but give it side tolerance.
-    if (enemy.bodyRect.overlaps(player.attackHitbox.inflate(10))) {
+    if (enemy.bodyRect.overlaps(
+      _playerAttackHitboxFor(direction, profile).inflate(profile.sideTolerance),
+    )) {
       return true;
     }
 
@@ -233,13 +268,84 @@ class WorldMapManager extends Component {
       return true;
     }
 
-    // Secondary fallback: nearby targets slightly off to the side should still connect.
-    if (distance > 54) {
+    if (distance > profile.maxDistance) {
       return false;
     }
     final dirToEnemy = toEnemy / distance;
-    final facingDot = dirToEnemy.dot(player.aimDirection.normalized());
-    return facingDot >= -0.12;
+    final facingDot = dirToEnemy.dot(direction.normalized());
+    return facingDot >= profile.facingTolerance;
+  }
+
+  _MeleeAttackProfile _currentMeleeAttackProfile() {
+    if (controller.level >= 10) {
+      return const _MeleeAttackProfile(
+        mode: _MeleeAttackMode.whirlwind,
+        forwardDistance: 40,
+        hitboxSize: 46,
+        effectDistance: 20,
+        effectSize: 54,
+        maxDistance: 76,
+        sideTolerance: 12,
+        facingTolerance: -0.2,
+      );
+    }
+    if (controller.level >= 4) {
+      return const _MeleeAttackProfile(
+        mode: _MeleeAttackMode.extended,
+        forwardDistance: 38,
+        hitboxSize: 44,
+        effectDistance: 18,
+        effectSize: 50,
+        maxDistance: 72,
+        sideTolerance: 12,
+        facingTolerance: -0.18,
+      );
+    }
+    return const _MeleeAttackProfile(
+      mode: _MeleeAttackMode.basic,
+      forwardDistance: 24,
+      hitboxSize: 34,
+      effectDistance: 10,
+      effectSize: 44,
+      maxDistance: 54,
+      sideTolerance: 10,
+      facingTolerance: -0.12,
+    );
+  }
+
+  List<Vector2> _currentMeleeAttackDirections(_MeleeAttackMode mode) {
+    if (mode == _MeleeAttackMode.whirlwind) {
+      return _whirlwindDirections
+          .map((direction) => direction.clone())
+          .toList();
+    }
+    return <Vector2>[player.aimDirection.normalized()];
+  }
+
+  Rect _playerAttackHitboxFor(Vector2 direction, _MeleeAttackProfile profile) {
+    final center = player.bodyRect.center;
+    final normalized = direction.normalized();
+    final hitCenter = Offset(
+      center.dx + normalized.x * profile.forwardDistance,
+      center.dy + normalized.y * profile.forwardDistance,
+    );
+    return Rect.fromCenter(
+      center: hitCenter,
+      width: profile.hitboxSize,
+      height: profile.hitboxSize,
+    );
+  }
+
+  Vector2 _attackEffectOriginFor(
+    Vector2 direction, {
+    required double distance,
+  }) {
+    final center = player.bodyRect.center;
+    final normalized = direction.normalized();
+    return Vector2(
+      center.dx + normalized.x * distance,
+      center.dy + normalized.y * distance,
+    );
   }
 
   Future<void> playerCastFireball({Vector2? direction}) async {
@@ -249,7 +355,9 @@ class WorldMapManager extends Component {
         : player.aimDirection;
     final fireMode = controller.level >= 12
         ? _FireballMode.inferno
-        : (controller.level >= 6 ? _FireballMode.flamethrower : _FireballMode.basic);
+        : (controller.level >= 6
+              ? _FireballMode.flamethrower
+              : _FireballMode.basic);
     if (controller.baseStats.mp < mpCost) {
       final skillName = switch (fireMode) {
         _FireballMode.basic => '火球',
@@ -275,17 +383,14 @@ class WorldMapManager extends Component {
     final directions = switch (fireMode) {
       _FireballMode.basic => <Vector2>[shotDirection],
       _FireballMode.flamethrower => <Vector2>[
-          _rotate(shotDirection, -0.24),
-          shotDirection,
-          _rotate(shotDirection, 0.24),
-        ],
-      _FireballMode.inferno => List<Vector2>.generate(
-          12,
-          (index) {
-            final angle = (math.pi * 2 * index) / 12;
-            return Vector2(math.cos(angle), math.sin(angle));
-          },
-        ),
+        _rotate(shotDirection, -0.24),
+        shotDirection,
+        _rotate(shotDirection, 0.24),
+      ],
+      _FireballMode.inferno => List<Vector2>.generate(12, (index) {
+        final angle = (math.pi * 2 * index) / 12;
+        return Vector2(math.cos(angle), math.sin(angle));
+      }),
     };
 
     for (final dir in directions) {
@@ -352,7 +457,8 @@ class WorldMapManager extends Component {
       if (!controller.flag(requiredFlag)) {
         _teleportLatch = true;
         controller.setHudMessage(currentTeleport.blockedMessage ?? '前方似乎被封住了。');
-        if (controller.currentMapId == 'ruins' && requiredFlag == 'can_escape_forest') {
+        if (controller.currentMapId == 'ruins' &&
+            requiredFlag == 'can_escape_forest') {
           onTeleportTriggered('ruins', 'entry');
         }
         return;
@@ -501,10 +607,7 @@ class WorldMapManager extends Component {
   }
 
   bool _applyDamageToPlayer(int damage, {required String source}) {
-    final defeated = controller.applyPlayerDamage(
-      damage,
-      source: source,
-    );
+    final defeated = controller.applyPlayerDamage(damage, source: source);
     if (defeated) {
       final safeSpawn =
           _spawnPoints[controller.currentSpawnId] ?? Vector2(64, 64);
@@ -555,7 +658,10 @@ class WorldMapManager extends Component {
         continue;
       }
 
-      final collisionDamage = math.max(1, (enemy.definition.attack * 0.32).round());
+      final collisionDamage = math.max(
+        1,
+        (enemy.definition.attack * 0.32).round(),
+      );
       final pushDirection = Vector2(
         player.bodyRect.center.dx - enemy.bodyRect.center.dx,
         player.bodyRect.center.dy - enemy.bodyRect.center.dy,
@@ -567,7 +673,10 @@ class WorldMapManager extends Component {
         amount: collisionDamage,
         isPlayerHit: true,
       );
-      _applyDamageToPlayer(collisionDamage, source: '${enemy.definition.name} 衝撞');
+      _applyDamageToPlayer(
+        collisionDamage,
+        source: '${enemy.definition.name} 衝撞',
+      );
       _contactDamageCooldown[enemy] = 0.65;
     }
   }
@@ -584,7 +693,8 @@ class WorldMapManager extends Component {
         continue;
       }
 
-      final supportsSkill = enemy.definition.id == 'bat' ||
+      final supportsSkill =
+          enemy.definition.id == 'bat' ||
           enemy.definition.id == 'goblin_chief' ||
           enemy.definition.id == 'elder_demon_lord';
       if (!supportsSkill) {
@@ -604,11 +714,7 @@ class WorldMapManager extends Component {
       }
 
       if (enemy.definition.id == 'elder_demon_lord') {
-        unawaited(
-          _triggerElderDemonLordSkill(
-            enemy,
-          ),
-        );
+        unawaited(_triggerElderDemonLordSkill(enemy));
         _enemySkillCooldown[enemy] = 6.0;
       } else if (enemy.definition.id == 'goblin_chief') {
         _spawnBossOrbBurst(enemy, direction);
@@ -628,10 +734,12 @@ class WorldMapManager extends Component {
     if (!telegraphed || !enemy.isMounted || _enemyAttacksBlocked) {
       return;
     }
-    final nextPattern = _elderSkillPattern[enemy] ?? _ElderDemonLordSkillPattern.ringBurst;
+    final nextPattern =
+        _elderSkillPattern[enemy] ?? _ElderDemonLordSkillPattern.ringBurst;
     switch (nextPattern) {
       case _ElderDemonLordSkillPattern.ringBurst:
-        _elderSkillPattern[enemy] = _ElderDemonLordSkillPattern.serpentineBarrage;
+        _elderSkillPattern[enemy] =
+            _ElderDemonLordSkillPattern.serpentineBarrage;
         await _spawnSequentialBossOrbBursts(
           enemy,
           waves: 3,
@@ -662,11 +770,7 @@ class WorldMapManager extends Component {
         player.bodyRect.center.dx - enemy.bodyRect.center.dx,
         player.bodyRect.center.dy - enemy.bodyRect.center.dy,
       );
-      _spawnBossOrbBurst(
-        enemy,
-        towardPlayer,
-        projectileCount: projectileCount,
-      );
+      _spawnBossOrbBurst(enemy, towardPlayer, projectileCount: projectileCount);
       if (wave < waves - 1) {
         await Future<void>.delayed(interval);
       }
@@ -705,7 +809,9 @@ class WorldMapManager extends Component {
     Vector2 towardPlayer, {
     int projectileCount = 10,
   }) {
-    final base = towardPlayer.length2 == 0 ? Vector2(1, 0) : towardPlayer.normalized();
+    final base = towardPlayer.length2 == 0
+        ? Vector2(1, 0)
+        : towardPlayer.normalized();
     final step = (math.pi * 2) / projectileCount;
     final startAngle = math.atan2(base.y, base.x);
 
@@ -717,7 +823,9 @@ class WorldMapManager extends Component {
   }
 
   void _syncFieldBgmForCurrentScene() {
-    if (_enemies.any((enemy) => enemy.isMounted && enemy.definition.id == 'goblin_chief')) {
+    if (_enemies.any(
+      (enemy) => enemy.isMounted && enemy.definition.id == 'goblin_chief',
+    )) {
       unawaited(AudioManager.instance.playBossBgm());
       return;
     }
@@ -732,12 +840,8 @@ class WorldMapManager extends Component {
         direction: direction,
         canTravelTo: canMoveTo,
         playerBodyRect: () => player.bodyRect,
-        speed: isElderDemonLord
-            ? _elderDemonLordProjectileSpeed
-            : 190,
-        maxDistance: isElderDemonLord
-            ? _elderDemonLordProjectileDistance
-            : 260,
+        speed: isElderDemonLord ? _elderDemonLordProjectileSpeed : 190,
+        maxDistance: isElderDemonLord ? _elderDemonLordProjectileDistance : 260,
         onHitPlayer: (hitDirection) {
           if (_enemyAttacksBlocked) {
             return;
@@ -844,7 +948,8 @@ class WorldMapManager extends Component {
     SceneEnemyDefinition enemyDef,
     EnemyDefinition baseEnemy,
   ) async {
-    if (_enemies.where((enemy) => enemy.isMounted).length >= _maxActiveEnemies) {
+    if (_enemies.where((enemy) => enemy.isMounted).length >=
+        _maxActiveEnemies) {
       return;
     }
 
@@ -911,12 +1016,15 @@ class WorldMapManager extends Component {
       name: '${baseEnemy.name} Lv.$enemyLevel',
       maxHp: (baseEnemy.maxHp * hpMul).round(),
       attack: (baseEnemy.attack * atkMul).round(),
-      defense: (baseEnemy.defense * (1 + (enemyLevel - 1) * defenseGrowth)).round(),
+      defense: (baseEnemy.defense * (1 + (enemyLevel - 1) * defenseGrowth))
+          .round(),
       moveSpeed: baseEnemy.moveSpeed,
       aggroRange: baseEnemy.aggroRange,
       attackRange: baseEnemy.attackRange,
       attackCooldown: baseEnemy.attackCooldown,
-      experienceReward: (baseEnemy.experienceReward * (1 + (enemyLevel - 1) * expGrowth)).round(),
+      experienceReward:
+          (baseEnemy.experienceReward * (1 + (enemyLevel - 1) * expGrowth))
+              .round(),
       aggressive: baseEnemy.aggressive,
       spriteSheet: baseEnemy.spriteSheet,
       rewardItemId: baseEnemy.rewardItemId,
@@ -927,7 +1035,10 @@ class WorldMapManager extends Component {
     );
   }
 
-  void _scheduleRespawn(SceneEnemyDefinition enemyDef, EnemyDefinition baseEnemy) {
+  void _scheduleRespawn(
+    SceneEnemyDefinition enemyDef,
+    EnemyDefinition baseEnemy,
+  ) {
     final delay = Duration(seconds: 7 + math.Random().nextInt(8));
     final timer = dart_async.Timer(delay, () {
       if (!isMounted || _activeDefinition == null) {
@@ -936,7 +1047,10 @@ class WorldMapManager extends Component {
       if (_activeDefinition!.id != controller.currentMapId) {
         return;
       }
-      if (!_isVisible(showWhenFlag: enemyDef.showWhenFlag, hiddenWhenFlag: enemyDef.hiddenWhenFlag)) {
+      if (!_isVisible(
+        showWhenFlag: enemyDef.showWhenFlag,
+        hiddenWhenFlag: enemyDef.hiddenWhenFlag,
+      )) {
         return;
       }
       unawaited(_spawnEnemy(enemyDef, baseEnemy));
@@ -949,12 +1063,8 @@ class WorldMapManager extends Component {
     required bool isBoss,
   }) {
     final bodySize = isBoss ? const Size(36, 46) : const Size(20, 30);
-    Rect bodyAt(Vector2 pos) => Rect.fromLTWH(
-          pos.x + 10,
-          pos.y + 14,
-          bodySize.width,
-          bodySize.height,
-        );
+    Rect bodyAt(Vector2 pos) =>
+        Rect.fromLTWH(pos.x + 10, pos.y + 14, bodySize.width, bodySize.height);
 
     final initialRect = bodyAt(initial);
     if (canMoveTo(initialRect) && !_isSpawnOverlapping(initialRect)) {
@@ -1008,7 +1118,11 @@ class WorldMapManager extends Component {
     final width = fromBodyRect.width;
     final height = fromBodyRect.height;
 
-    final targetCell = _pickNearestWalkableTarget(goal, width: width, height: height);
+    final targetCell = _pickNearestWalkableTarget(
+      goal,
+      width: width,
+      height: height,
+    );
     if (targetCell == null) {
       return const <Vector2>[];
     }
@@ -1031,10 +1145,10 @@ class WorldMapManager extends Component {
       }
 
       if (current == targetCell) {
-        return _reconstructPath(cameFrom, current)
-            .skip(1)
-            .map((cell) => _cellCenter(cell))
-            .toList();
+        return _reconstructPath(
+          cameFrom,
+          current,
+        ).skip(1).map((cell) => _cellCenter(cell)).toList();
       }
 
       open.remove(current);
@@ -1190,7 +1304,10 @@ class WorldMapManager extends Component {
             controller.setHudMessage('這個寶箱已經空了。');
             return;
           }
-          final rewardItemIds = <String>[chestDef.itemId, ...chestDef.extraItemIds];
+          final rewardItemIds = <String>[
+            chestDef.itemId,
+            ...chestDef.extraItemIds,
+          ];
           for (final itemId in rewardItemIds) {
             controller.addItem(itemId);
             await controller.showChestRewardDialog(
@@ -1255,16 +1372,34 @@ class WorldMapManager extends Component {
             'start': DialogNode(
               id: 'start',
               speaker: '商人',
-              text: claimedGift
-                  ? '補給都準備好了，缺什麼就說。'
-                  : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。',
+              text: claimedGift ? '補給都準備好了，缺什麼就說。' : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。',
               choices: claimedGift
                   ? const [
-                      DialogChoice(label: '買治療藥水 (20G)', actionKey: 'buy_potion', nextNodeId: 'start'),
-                      DialogChoice(label: '買魔力藥水 (28G)', actionKey: 'buy_mana_potion', nextNodeId: 'start'),
-                      DialogChoice(label: '賣治療藥水', actionKey: 'sell_potion', nextNodeId: 'start'),
-                      DialogChoice(label: '賣魔力藥水', actionKey: 'sell_mana_potion', nextNodeId: 'start'),
-                      DialogChoice(label: '賣一件裝備', actionKey: 'sell_equipment', nextNodeId: 'start'),
+                      DialogChoice(
+                        label: '買治療藥水 (20G)',
+                        actionKey: 'buy_potion',
+                        nextNodeId: 'start',
+                      ),
+                      DialogChoice(
+                        label: '買魔力藥水 (28G)',
+                        actionKey: 'buy_mana_potion',
+                        nextNodeId: 'start',
+                      ),
+                      DialogChoice(
+                        label: '賣治療藥水',
+                        actionKey: 'sell_potion',
+                        nextNodeId: 'start',
+                      ),
+                      DialogChoice(
+                        label: '賣魔力藥水',
+                        actionKey: 'sell_mana_potion',
+                        nextNodeId: 'start',
+                      ),
+                      DialogChoice(
+                        label: '賣一件裝備',
+                        actionKey: 'sell_equipment',
+                        nextNodeId: 'start',
+                      ),
                       DialogChoice(label: '離開'),
                     ]
                   : const [
@@ -1308,11 +1443,31 @@ class WorldMapManager extends Component {
               speaker: '迷霧商旅',
               text: '困在迷霧裡了吧？我這裡有貨，隱藏神裝只能打怪掉，我可不賣。',
               choices: [
-                DialogChoice(label: '買治療藥水 (20G)', actionKey: 'buy_potion', nextNodeId: 'start'),
-                DialogChoice(label: '買魔力藥水 (28G)', actionKey: 'buy_mana_potion', nextNodeId: 'start'),
-                DialogChoice(label: '買武器箱 (120G)', actionKey: 'buy_weapon_crate', nextNodeId: 'start'),
-                DialogChoice(label: '買防具箱 (120G)', actionKey: 'buy_armor_crate', nextNodeId: 'start'),
-                DialogChoice(label: '賣一件裝備', actionKey: 'sell_equipment', nextNodeId: 'start'),
+                DialogChoice(
+                  label: '買治療藥水 (20G)',
+                  actionKey: 'buy_potion',
+                  nextNodeId: 'start',
+                ),
+                DialogChoice(
+                  label: '買魔力藥水 (28G)',
+                  actionKey: 'buy_mana_potion',
+                  nextNodeId: 'start',
+                ),
+                DialogChoice(
+                  label: '買武器箱 (120G)',
+                  actionKey: 'buy_weapon_crate',
+                  nextNodeId: 'start',
+                ),
+                DialogChoice(
+                  label: '買防具箱 (120G)',
+                  actionKey: 'buy_armor_crate',
+                  nextNodeId: 'start',
+                ),
+                DialogChoice(
+                  label: '賣一件裝備',
+                  actionKey: 'sell_equipment',
+                  nextNodeId: 'start',
+                ),
                 DialogChoice(label: '離開'),
               ],
             ),
@@ -1348,7 +1503,8 @@ class WorldMapManager extends Component {
               'reveal_2': const DialogNode(
                 id: 'reveal_2',
                 speaker: '長老',
-                text: '你以為自己救了所有人嗎？太天真了。就在你被困在迷霧森林、拼命尋找羅盤的這段時間裡，我已經將整個村莊獻給了真正的大魔王。',
+                text:
+                    '你以為自己救了所有人嗎？太天真了。就在你被困在迷霧森林、拼命尋找羅盤的這段時間裡，我已經將整個村莊獻給了真正的大魔王。',
                 nextNodeId: 'reveal_3',
               ),
               'reveal_3': const DialogNode(
@@ -1410,16 +1566,16 @@ class WorldMapManager extends Component {
             'start': DialogNode(
               id: 'start',
               speaker: '長老',
-            text: controller.flag('can_escape_forest')
-              ? '你打破了迷霧迴圈，村子有救了！'
-              : defeatedChief
-              ? '你擊倒了首領，但還沒離開迷霧，先拿到羅盤。'
+              text: controller.flag('can_escape_forest')
+                  ? '你打破了迷霧迴圈，村子有救了！'
+                  : defeatedChief
+                  ? '你擊倒了首領，但還沒離開迷霧，先拿到羅盤。'
                   : hasKey
-              ? '很好，舊鑰匙在你手上了。進入迷霧森林後，目標是拯救村莊。'
+                  ? '很好，舊鑰匙在你手上了。進入迷霧森林後，目標是拯救村莊。'
                   : '先去商人那裡拿補給，再去右下方找到舊鑰匙。別空手往外衝。',
-            nextNodeId: controller.flag('can_escape_forest')
-              ? 'finish'
-              : defeatedChief
+              nextNodeId: controller.flag('can_escape_forest')
+                  ? 'finish'
+                  : defeatedChief
                   ? 'finish'
                   : (hasKey ? 'ready' : 'choice'),
               setFlagOnEnter: 'intro_seen',
@@ -1462,16 +1618,33 @@ class _PendingRespawn {
   final dart_async.Timer timer;
 }
 
-enum _FireballMode {
-  basic,
-  flamethrower,
-  inferno,
+enum _FireballMode { basic, flamethrower, inferno }
+
+enum _MeleeAttackMode { basic, extended, whirlwind }
+
+class _MeleeAttackProfile {
+  const _MeleeAttackProfile({
+    required this.mode,
+    required this.forwardDistance,
+    required this.hitboxSize,
+    required this.effectDistance,
+    required this.effectSize,
+    required this.maxDistance,
+    required this.sideTolerance,
+    required this.facingTolerance,
+  });
+
+  final _MeleeAttackMode mode;
+  final double forwardDistance;
+  final double hitboxSize;
+  final double effectDistance;
+  final double effectSize;
+  final double maxDistance;
+  final double sideTolerance;
+  final double facingTolerance;
 }
 
-enum _ElderDemonLordSkillPattern {
-  ringBurst,
-  serpentineBarrage,
-}
+enum _ElderDemonLordSkillPattern { ringBurst, serpentineBarrage }
 
 class _PathCell {
   const _PathCell(this.x, this.y);

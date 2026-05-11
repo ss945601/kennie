@@ -8,7 +8,7 @@ import 'services/save_repository.dart';
 
 class GameStateController extends ChangeNotifier {
   GameStateController({required SaveRepository saveRepository})
-      : _saveRepository = saveRepository;
+    : _saveRepository = saveRepository;
 
   final SaveRepository _saveRepository;
   final Random _random = Random();
@@ -40,10 +40,26 @@ class GameStateController extends ChangeNotifier {
   EquipmentLoadout equipment = const EquipmentLoadout();
   final Map<String, bool> storyFlags = <String, bool>{};
   final List<InventoryEntry> inventory = <InventoryEntry>[
-    const InventoryEntry(itemId: 'potion', quantity: 2, entryId: 'potion_stack'),
-    const InventoryEntry(itemId: 'mana_potion', quantity: 1, entryId: 'mana_stack'),
-    const InventoryEntry(itemId: 'bronze_sword', quantity: 1, entryId: 'bronze_sword_legacy'),
-    const InventoryEntry(itemId: 'cloth_armor', quantity: 1, entryId: 'cloth_armor_legacy'),
+    const InventoryEntry(
+      itemId: 'potion',
+      quantity: 2,
+      entryId: 'potion_stack',
+    ),
+    const InventoryEntry(
+      itemId: 'mana_potion',
+      quantity: 1,
+      entryId: 'mana_stack',
+    ),
+    const InventoryEntry(
+      itemId: 'bronze_sword',
+      quantity: 1,
+      entryId: 'bronze_sword_legacy',
+    ),
+    const InventoryEntry(
+      itemId: 'cloth_armor',
+      quantity: 1,
+      entryId: 'cloth_armor_legacy',
+    ),
   ];
 
   DialogSession? activeDialog;
@@ -76,12 +92,14 @@ class GameStateController extends ChangeNotifier {
     final armorEntry = _entryById(equipment.armorEntryId);
     final weapon = weaponEntry?.item;
     final armor = armorEntry?.item;
-    final effectiveMaxHp = baseStats.maxHp +
+    final effectiveMaxHp =
+        baseStats.maxHp +
         (weapon?.maxHpBonus ?? 0) +
         (armor?.maxHpBonus ?? 0) +
         (weaponEntry?.bonusMaxHp ?? 0) +
         (armorEntry?.bonusMaxHp ?? 0);
-    final effectiveMaxMp = baseStats.maxMp +
+    final effectiveMaxMp =
+        baseStats.maxMp +
         (weapon?.maxMpBonus ?? 0) +
         (armor?.maxMpBonus ?? 0) +
         (weaponEntry?.bonusMaxMp ?? 0) +
@@ -91,17 +109,22 @@ class GameStateController extends ChangeNotifier {
       hp: baseStats.hp.clamp(0, effectiveMaxHp),
       maxMp: effectiveMaxMp,
       mp: baseStats.mp.clamp(0, effectiveMaxMp),
-      attack: baseStats.attack + (weapon?.attackBonus ?? 0) + (weaponEntry?.bonusAttack ?? 0) + (armorEntry?.bonusAttack ?? 0),
-      defense: baseStats.defense + (armor?.defenseBonus ?? 0) + (weaponEntry?.bonusDefense ?? 0) + (armorEntry?.bonusDefense ?? 0),
+      attack:
+          baseStats.attack +
+          (weapon?.attackBonus ?? 0) +
+          (weaponEntry?.bonusAttack ?? 0) +
+          (armorEntry?.bonusAttack ?? 0),
+      defense:
+          baseStats.defense +
+          (armor?.defenseBonus ?? 0) +
+          (weaponEntry?.bonusDefense ?? 0) +
+          (armorEntry?.bonusDefense ?? 0),
     );
   }
 
   void _normalizeVitalsToEffectiveMaximums() {
     final stats = effectiveStats;
-    baseStats = baseStats.copyWith(
-      hp: stats.hp,
-      mp: stats.mp,
-    );
+    baseStats = baseStats.copyWith(hp: stats.hp, mp: stats.mp);
   }
 
   InventoryEntry? _entryById(String? entryId) {
@@ -118,7 +141,8 @@ class GameStateController extends ChangeNotifier {
 
   int _entryValue(InventoryEntry entry) {
     final base = entry.item.price;
-    final bonusScore = (entry.bonusAttack + entry.bonusDefense) * 8 +
+    final bonusScore =
+        (entry.bonusAttack + entry.bonusDefense) * 8 +
         entry.bonusMaxHp * 2 +
         entry.bonusMaxMp * 2;
     final rarityMultiplier = switch (entry.rarity) {
@@ -157,7 +181,10 @@ class GameStateController extends ChangeNotifier {
     }
   }
 
-  void _showSkillUnlockDialog({required String skillName, required String description}) {
+  void _showSkillUnlockDialog({
+    required String skillName,
+    required String description,
+  }) {
     final dialog = DialogTree(
       startNodeId: 'start',
       nodes: {
@@ -200,20 +227,22 @@ class GameStateController extends ChangeNotifier {
   }
 
   void _showDeathDialog() {
-    startDialog(const DialogTree(
-      startNodeId: 'death',
-      nodes: {
-        'death': DialogNode(
-          id: 'death',
-          speaker: '系統',
-          text: '你死了......是否讀檔重來？',
-          choices: [
-            DialogChoice(label: '讀檔重來', actionKey: 'death_load_save'),
-            DialogChoice(label: '返回選單', actionKey: 'death_return_menu'),
-          ],
-        ),
-      },
-    ));
+    startDialog(
+      const DialogTree(
+        startNodeId: 'death',
+        nodes: {
+          'death': DialogNode(
+            id: 'death',
+            speaker: '系統',
+            text: '你死了......是否讀檔重來？',
+            choices: [
+              DialogChoice(label: '讀檔重來', actionKey: 'death_load_save'),
+              DialogChoice(label: '返回選單', actionKey: 'death_return_menu'),
+            ],
+          ),
+        },
+      ),
+    );
   }
 
   bool get isFieldInputLocked =>
@@ -223,8 +252,10 @@ class GameStateController extends ChangeNotifier {
       activeChestRewardDialog != null ||
       transitionOpacity > 0.05;
 
-    bool get isOverlayBusy =>
-      activeDialog != null || activeChestRewardDialog != null || isPauseMenuOpen;
+  bool get isOverlayBusy =>
+      activeDialog != null ||
+      activeChestRewardDialog != null ||
+      isPauseMenuOpen;
 
   bool flag(String key) => storyFlags[key] ?? false;
 
@@ -267,12 +298,34 @@ class GameStateController extends ChangeNotifier {
       ..clear()
       ..addAll(const [
         InventoryEntry(itemId: 'potion', quantity: 2, entryId: 'potion_stack'),
-        InventoryEntry(itemId: 'mana_potion', quantity: 1, entryId: 'mana_stack'),
-        InventoryEntry(itemId: 'bronze_sword', quantity: 1, entryId: 'bronze_sword_legacy'),
-        InventoryEntry(itemId: 'cloth_armor', quantity: 1, entryId: 'cloth_armor_legacy'),
+        InventoryEntry(
+          itemId: 'mana_potion',
+          quantity: 1,
+          entryId: 'mana_stack',
+        ),
+        InventoryEntry(
+          itemId: 'bronze_sword',
+          quantity: 1,
+          entryId: 'bronze_sword_legacy',
+        ),
+        InventoryEntry(
+          itemId: 'cloth_armor',
+          quantity: 1,
+          entryId: 'cloth_armor_legacy',
+        ),
       ]);
-    baseStats = const PlayerStats(maxHp: 64, hp: 64, maxMp: 30, mp: 30, attack: 12, defense: 6);
-    equipment = const EquipmentLoadout(weaponEntryId: 'bronze_sword_legacy', armorEntryId: 'cloth_armor_legacy');
+    baseStats = const PlayerStats(
+      maxHp: 64,
+      hp: 64,
+      maxMp: 30,
+      mp: 30,
+      attack: 12,
+      defense: 6,
+    );
+    equipment = const EquipmentLoadout(
+      weaponEntryId: 'bronze_sword_legacy',
+      armorEntryId: 'cloth_armor_legacy',
+    );
     hudMessage = '新冒險開始！先去和長老聊聊吧，J 揮劍、K 火球。';
     notifyListeners();
   }
@@ -515,7 +568,11 @@ class GameStateController extends ChangeNotifier {
     return true;
   }
 
-  void onEnemyDefeated(EnemyDefinition enemy, {String? defeatedFlag, String? messagePrefix}) {
+  void onEnemyDefeated(
+    EnemyDefinition enemy, {
+    String? defeatedFlag,
+    String? messagePrefix,
+  }) {
     final drops = <String>[];
     if (_random.nextDouble() < _potionDropChance) {
       final potionId = _random.nextDouble() < 0.25 ? 'mana_potion' : 'potion';
@@ -541,7 +598,9 @@ class GameStateController extends ChangeNotifier {
           ItemRarity.epic => '史詩',
           ItemRarity.legendary => '傳說',
         };
-        drops.add('$rarityTag【${itemCatalog[randomEquip]?.name ?? randomEquip}】');
+        drops.add(
+          '$rarityTag【${itemCatalog[randomEquip]?.name ?? randomEquip}】',
+        );
       }
     }
     if (enemy.rewardFlag case final rewardFlag?) {
@@ -565,7 +624,8 @@ class GameStateController extends ChangeNotifier {
     gainExperience(enemy.experienceReward);
     final prefix = messagePrefix == null ? '' : '$messagePrefix ';
     final dropText = drops.isEmpty ? '' : ' 掉落: ${drops.join('、')}';
-    hudMessage = '$prefix擊敗 ${enemy.name}，獲得 ${enemy.experienceReward} EXP。$dropText';
+    hudMessage =
+        '$prefix擊敗 ${enemy.name}，獲得 ${enemy.experienceReward} EXP。$dropText';
     notifyListeners();
   }
 
@@ -683,25 +743,30 @@ class GameStateController extends ChangeNotifier {
         mp: effectiveStats.maxMp,
       );
       hudMessage = '升級！你已到達 Lv.$level。';
+      if (level >= 4 && !flag('skill_melee_extended_unlocked')) {
+        storyFlags['skill_melee_extended_unlocked'] = true;
+        unlockedMessages.add((name: '強化斬擊', description: '普通攻擊距離與揮砍範圍變得更遠。'));
+      }
       if (level >= 6 && !flag('skill_flamethrower_unlocked')) {
         storyFlags['skill_flamethrower_unlocked'] = true;
-        unlockedMessages.add((
-          name: '噴射火焰',
-          description: '火球術進化為扇形三連發。',
-        ));
+        unlockedMessages.add((name: '噴射火焰', description: '火球術進化為扇形三連發。'));
+      }
+      if (level >= 10 && !flag('skill_melee_whirlwind_unlocked')) {
+        storyFlags['skill_melee_whirlwind_unlocked'] = true;
+        unlockedMessages.add((name: '旋風斬', description: '普通攻擊再次進化，可同時向四周揮砍。'));
       }
       if (level >= 12 && !flag('skill_inferno_unlocked')) {
         storyFlags['skill_inferno_unlocked'] = true;
-        unlockedMessages.add((
-          name: '大字爆炎',
-          description: '噴射火焰再進化，向四周全面爆發火球。',
-        ));
+        unlockedMessages.add((name: '大字爆炎', description: '噴射火焰再進化，向四周全面爆發火球。'));
       }
     }
     if (unlockedMessages.isNotEmpty) {
       final latest = unlockedMessages.last;
       if (activeDialog == null && activeChestRewardDialog == null) {
-        _showSkillUnlockDialog(skillName: latest.name, description: latest.description);
+        _showSkillUnlockDialog(
+          skillName: latest.name,
+          description: latest.description,
+        );
       } else {
         hudMessage = '學會新技能：${latest.name}';
       }
@@ -828,19 +893,23 @@ class GameStateController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final pool = itemCatalog.values.where((item) {
-      if (item.hiddenDropOnly) {
-        return false;
-      }
-      if (weaponOnly) {
-        return item.type == ItemType.weapon;
-      }
-      return item.type == ItemType.armor;
-    }).toList(growable: false);
+    final pool = itemCatalog.values
+        .where((item) {
+          if (item.hiddenDropOnly) {
+            return false;
+          }
+          if (weaponOnly) {
+            return item.type == ItemType.weapon;
+          }
+          return item.type == ItemType.armor;
+        })
+        .toList(growable: false);
     final selected = pool[_random.nextInt(pool.length)];
     addEquipmentDrop(
       selected.id,
-      rarity: _random.nextDouble() < 0.2 ? ItemRarity.rare : ItemRarity.uncommon,
+      rarity: _random.nextDouble() < 0.2
+          ? ItemRarity.rare
+          : ItemRarity.uncommon,
       markObtained: true,
     );
     hudMessage = '購買裝備箱成功，獲得 ${selected.name}。';
@@ -920,7 +989,11 @@ class GameStateController extends ChangeNotifier {
 
     switch (command) {
       case BattleCommand.attack:
-        final damage = clampDamage(effectiveStats.attack, enemy.defense, _random);
+        final damage = clampDamage(
+          effectiveStats.attack,
+          enemy.defense,
+          _random,
+        );
         final remainingHp = max(0, battle.enemyHp - damage);
         log = '你造成 $damage 點傷害。';
         nextBattle = nextBattle.copyWith(enemyHp: remainingHp, log: log);
@@ -982,7 +1055,11 @@ class GameStateController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _finishBattle(EnemyDefinition enemy, {required bool won, required String openingLog}) {
+  void _finishBattle(
+    EnemyDefinition enemy, {
+    required bool won,
+    required String openingLog,
+  }) {
     activeBattle = null;
     if (won) {
       if (enemy.rewardItemId case final rewardItemId?) {
@@ -998,13 +1075,22 @@ class GameStateController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addItem(String itemId, {int quantity = 1, bool markObtained = false, bool silent = false}) {
+  void addItem(
+    String itemId, {
+    int quantity = 1,
+    bool markObtained = false,
+    bool silent = false,
+  }) {
     final item = itemCatalog[itemId];
     if (item == null) {
       return;
     }
     if (item.type == ItemType.weapon || item.type == ItemType.armor) {
-      addEquipmentDrop(itemId, rarity: ItemRarity.common, markObtained: markObtained);
+      addEquipmentDrop(
+        itemId,
+        rarity: ItemRarity.common,
+        markObtained: markObtained,
+      );
       if (!silent) {
         notifyListeners();
       }
