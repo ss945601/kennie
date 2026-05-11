@@ -43,10 +43,16 @@ class EnemyComponent extends PositionComponent {
   double _knockbackTotal = 0;
   final double _knockbackMinSpeed = 80;
   final double _knockbackMaxSpeed = 270;
+  double _attackTelegraphRemaining = 0;
+  double _attackTelegraphDuration = 0;
+  double _attackTelegraphAmplitude = 0;
+  double _attackTelegraphFrequency = 0;
+  Completer<void>? _attackTelegraphCompleter;
 
   Rect get bodyRect => Rect.fromLTWH(position.x + 10, position.y + 14, size.x - 20, size.y - 18);
   int get currentHp => _currentHp;
   int get maxHp => _maxHp;
+  bool get isTelegraphingAttack => _attackTelegraphRemaining > 0;
 
   @override
   Future<void> onLoad() async {
@@ -114,6 +120,7 @@ class EnemyComponent extends PositionComponent {
     if (_attackCooldownRemaining > 0) {
       _attackCooldownRemaining = math.max(0, _attackCooldownRemaining - dt);
     }
+    _updateAttackTelegraph(dt);
     if (player.parent == null || findGame()?.camera == null) {
       priority = (position.y + size.y).round();
       return;
@@ -144,11 +151,57 @@ class EnemyComponent extends PositionComponent {
       _pathWaypoints.clear();
       _pathRefreshRemaining = 0;
     }
-    if (!locked) {
+    if (!locked && !isTelegraphingAttack) {
       _updateCombatMovement(dt);
     }
     _sprite.scale.x = _facingLeft ? -1 : 1;
     priority = (position.y + size.y).round();
+  }
+
+  Future<bool> playAttackTelegraph({
+    double duration = 2.5,
+    double amplitude = 6,
+    double frequency = 10,
+  }) async {
+    if (!isMounted || !_sprite.isMounted) {
+      return false;
+    }
+    if (_attackTelegraphCompleter != null) {
+      await _attackTelegraphCompleter!.future;
+      return isMounted;
+    }
+    _attackTelegraphDuration = duration;
+    _attackTelegraphRemaining = duration;
+    _attackTelegraphAmplitude = amplitude;
+    _attackTelegraphFrequency = frequency;
+    final completer = Completer<void>();
+    _attackTelegraphCompleter = completer;
+    await completer.future;
+    return isMounted;
+  }
+
+  void _updateAttackTelegraph(double dt) {
+    if (!_sprite.isMounted) {
+      return;
+    }
+    if (_attackTelegraphRemaining <= 0) {
+      if (_sprite.position.x != 0) {
+        _sprite.position.x = 0;
+      }
+      return;
+    }
+
+    _attackTelegraphRemaining = math.max(0, _attackTelegraphRemaining - dt);
+    final elapsed = _attackTelegraphDuration - _attackTelegraphRemaining;
+    _sprite.position.x = math.sin(elapsed * _attackTelegraphFrequency * math.pi * 2) *
+        _attackTelegraphAmplitude;
+
+    if (_attackTelegraphRemaining <= 0.001) {
+      _attackTelegraphRemaining = 0;
+      _sprite.position.x = 0;
+      _attackTelegraphCompleter?.complete();
+      _attackTelegraphCompleter = null;
+    }
   }
 
   void _updateCombatMovement(double dt) {

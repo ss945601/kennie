@@ -386,10 +386,21 @@ class WorldMapManager extends Component {
     return true;
   }
 
+  bool get _enemyAttacksBlocked => controller.isOverlayBusy;
+
   Future<void> _handleEnemyAttack(
     EnemyComponent enemy,
     Vector2 attackDirection,
   ) async {
+    if (!enemy.isMounted || _enemyAttacksBlocked) {
+      return;
+    }
+    if (enemy.definition.id == 'elder_demon_lord') {
+      final telegraphed = await enemy.playAttackTelegraph();
+      if (!telegraphed || !enemy.isMounted || _enemyAttacksBlocked) {
+        return;
+      }
+    }
     final damage = controller.rollEnemyDamage(enemy.definition);
     _spawnEnemyAttackEffect(_playerDamagePosition());
     player.applyKnockback(attackDirection, distance: 22);
@@ -521,6 +532,9 @@ class WorldMapManager extends Component {
   }
 
   void _applyTouchCollisionDamage() {
+    if (_enemyAttacksBlocked) {
+      return;
+    }
     for (final enemy in _enemies) {
       if (!enemy.isMounted) {
         continue;
@@ -551,6 +565,9 @@ class WorldMapManager extends Component {
   }
 
   void _updateEnemySkills() {
+    if (_enemyAttacksBlocked) {
+      return;
+    }
     for (final enemy in _enemies) {
       if (!enemy.isMounted) {
         continue;
@@ -577,14 +594,11 @@ class WorldMapManager extends Component {
 
       if (enemy.definition.id == 'elder_demon_lord') {
         unawaited(
-          _spawnSequentialBossOrbBursts(
+          _triggerElderDemonLordSkill(
             enemy,
-            waves: 3,
-            projectileCount: 14,
-            interval: const Duration(milliseconds: 180),
           ),
         );
-        _enemySkillCooldown[enemy] = 3.2;
+        _enemySkillCooldown[enemy] = 6.0;
       } else if (enemy.definition.id == 'goblin_chief') {
         _spawnBossOrbBurst(enemy, direction);
         _enemySkillCooldown[enemy] = 2.1;
@@ -595,6 +609,22 @@ class WorldMapManager extends Component {
     }
   }
 
+  Future<void> _triggerElderDemonLordSkill(EnemyComponent enemy) async {
+    if (!enemy.isMounted || _enemyAttacksBlocked) {
+      return;
+    }
+    final telegraphed = await enemy.playAttackTelegraph();
+    if (!telegraphed || !enemy.isMounted || _enemyAttacksBlocked) {
+      return;
+    }
+    await _spawnSequentialBossOrbBursts(
+      enemy,
+      waves: 3,
+      projectileCount: 14,
+      interval: const Duration(milliseconds: 180),
+    );
+  }
+
   Future<void> _spawnSequentialBossOrbBursts(
     EnemyComponent enemy, {
     required int waves,
@@ -602,7 +632,7 @@ class WorldMapManager extends Component {
     required Duration interval,
   }) async {
     for (var wave = 0; wave < waves; wave += 1) {
-      if (!isMounted || !enemy.isMounted) {
+      if (!isMounted || !enemy.isMounted || _enemyAttacksBlocked) {
         return;
       }
       final towardPlayer = Vector2(
@@ -652,6 +682,9 @@ class WorldMapManager extends Component {
         canTravelTo: canMoveTo,
         playerBodyRect: () => player.bodyRect,
         onHitPlayer: (hitDirection) {
+          if (_enemyAttacksBlocked) {
+            return;
+          }
           final damage = math.max(2, (enemy.definition.attack * 0.68).round());
           player.applyKnockback(hitDirection, distance: 18);
           _spawnEnemyAttackEffect(_playerDamagePosition());

@@ -214,7 +214,7 @@ const mapDefinitions = <String, MapDefinition>{
         id: 'elder_demon_lord',
         enemyId: 'elder_demon_lord',
         label: '大魔王',
-        x: 320,
+        x: 330,
         y: 202,
         showWhenFlag: 'elder_boss_triggered',
         hiddenWhenFlag: 'beat_elder_boss',
