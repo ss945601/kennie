@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,13 +8,20 @@ import '../../game/rpg_game.dart';
 import '../responsive_overlay.dart';
 import '../../state/game_state_controller.dart';
 
-class HudOverlay extends StatelessWidget {
+class HudOverlay extends StatefulWidget {
   const HudOverlay({super.key, required this.game});
 
   final RpgGame game;
 
   @override
+  State<HudOverlay> createState() => _HudOverlayState();
+}
+
+class _HudOverlayState extends State<HudOverlay> {
+
+  @override
   Widget build(BuildContext context) {
+    final game = widget.game;
     return SafeArea(
       child: Consumer<GameStateController>(
         builder: (context, controller, _) {
@@ -167,7 +176,7 @@ class HudOverlay extends StatelessWidget {
                         color: const Color(0x99121820),
                         child: Text(
                           ui.touchControls
-                              ? '左下搖桿移動  右下攻擊/火球/互動/藥水  右上暫停'
+                              ? '左下搖桿移動  按住右下火球搖桿瞄準，放開施放  右上暫停'
                               : 'J/Enter 近戰  K/2 火球  H/1 藥水  Space 互動  Esc 選單',
                           style: TextStyle(
                             color: Colors.white54,
@@ -228,14 +237,13 @@ class HudOverlay extends StatelessWidget {
                                 : () => game.handleAttack(),
                           ),
                           SizedBox(width: ui.value(12, compactValue: 8)),
-                          _TouchActionButton(
-                            icon: Icons.local_fire_department_rounded,
-                            label: '火球',
-                            accentColor: const Color(0xFF9A4AD8),
+                          _RangedAimJoystick(
                             compact: ui.compact,
-                            onPressed: controller.isFieldInputLocked
-                                ? null
-                                : () => game.handleFireball(),
+                            enabled: !controller.isFieldInputLocked,
+                            label: '火球',
+                            onCast: (direction) {
+                              unawaited(game.handleFireball(direction: direction));
+                            },
                           ),
                         ],
                       ),
@@ -258,6 +266,181 @@ class HudOverlay extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _RangedAimJoystick extends StatefulWidget {
+  const _RangedAimJoystick({
+    required this.enabled,
+    required this.onCast,
+    required this.label,
+    this.compact = false,
+  });
+
+  final bool enabled;
+  final ValueChanged<Vector2> onCast;
+  final String label;
+  final bool compact;
+
+  @override
+  State<_RangedAimJoystick> createState() => _RangedAimJoystickState();
+}
+
+class _RangedAimJoystickState extends State<_RangedAimJoystick> {
+  Offset _knobOffset = Offset.zero;
+  bool _isAiming = false;
+  int? _activePointer;
+
+  double get _baseSize => widget.compact ? 70 : 88;
+  double get _knobSize => widget.compact ? 26 : 32;
+  double get _travelRadius => widget.compact ? 18 : 23;
+
+  Vector2 get _castDirection {
+    if (_knobOffset == Offset.zero) {
+      return Vector2(0, -1);
+    }
+    return Vector2(_knobOffset.dx, _knobOffset.dy).normalized();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RangedAimJoystick oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled && oldWidget.enabled) {
+      _resetStick(notifyParent: false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final frameColor = const Color(0xFFAA3A30);
+    final baseColor = _isAiming
+        ? const Color(0x66B63B2C)
+        : const Color(0x5533221F);
+
+    return Opacity(
+      opacity: widget.enabled ? 1 : 0.55,
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: widget.enabled
+            ? (event) {
+                if (_activePointer != null) {
+                  return;
+                }
+                _activePointer = event.pointer;
+                _isAiming = true;
+                _updateStick(event.localPosition);
+              }
+            : null,
+        onPointerMove: widget.enabled
+            ? (event) {
+                if (_activePointer != event.pointer) {
+                  return;
+                }
+                _updateStick(event.localPosition);
+              }
+            : null,
+        onPointerUp: widget.enabled
+            ? (event) {
+                if (_activePointer != event.pointer) {
+                  return;
+                }
+                _releaseCast();
+              }
+            : null,
+        onPointerCancel: widget.enabled
+            ? (event) {
+                if (_activePointer != event.pointer) {
+                  return;
+                }
+                _resetStick();
+              }
+            : null,
+        child: SizedBox(
+          width: _baseSize,
+          height: _baseSize,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: baseColor,
+                  border: Border.all(color: frameColor.withValues(alpha: 0.8)),
+                ),
+                child: SizedBox(width: _baseSize, height: _baseSize),
+              ),
+              Transform.translate(
+                offset: _knobOffset,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xCCF15E42),
+                    border: Border.all(color: Colors.white70),
+                  ),
+                  child: SizedBox(width: _knobSize, height: _knobSize),
+                ),
+              ),
+              Positioned(
+                bottom: 2,
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: widget.compact ? 8.5 : 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _updateStick(Offset localPosition) {
+    if (!mounted) {
+      return;
+    }
+    final center = Offset(_baseSize / 2, _baseSize / 2);
+    var delta = localPosition - center;
+    final distance = delta.distance;
+    if (distance > _travelRadius) {
+      final scale = _travelRadius / distance;
+      delta = Offset(delta.dx * scale, delta.dy * scale);
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isAiming = true;
+      _knobOffset = delta;
+    });
+  }
+
+  void _resetStick({bool notifyParent = true}) {
+    if (!mounted) {
+      return;
+    }
+    _activePointer = null;
+    if (!_isAiming && _knobOffset == Offset.zero) {
+      return;
+    }
+    setState(() {
+      _isAiming = false;
+      _knobOffset = Offset.zero;
+    });
+  }
+
+  void _releaseCast() {
+    if (!mounted) {
+      return;
+    }
+    if (_isAiming) {
+      widget.onCast(_castDirection);
+    }
+    _resetStick();
   }
 }
 

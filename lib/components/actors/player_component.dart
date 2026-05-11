@@ -75,6 +75,14 @@ class PlayerComponent extends PositionComponent {
 
   Vector2 get aimDirection => _aimDirection.clone();
 
+  void setAimDirection(Vector2 direction) {
+    if (direction.length2 == 0) {
+      return;
+    }
+    _aimDirection = direction.normalized();
+    facing = _vectorToFacing(_aimDirection);
+  }
+
   Vector2 get facingVector => aimDirection;
 
   Vector2 get attackEffectOrigin {

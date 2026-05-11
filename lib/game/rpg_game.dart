@@ -113,7 +113,12 @@ class RpgGame extends BonfireWithCollision {
 
   Future<void> handleAttack() => worldMapManager.playerAttack();
 
-  Future<void> handleFireball() => worldMapManager.playerCastFireball();
+  Future<void> handleFireball({Vector2? direction}) {
+    if (direction != null) {
+      hero.setAimDirection(direction);
+    }
+    return worldMapManager.playerCastFireball(direction: direction);
+  }
 
   void updateTouchMovement(Vector2 movement) {
     if (!hero.isMounted) {

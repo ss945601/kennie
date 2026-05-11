@@ -217,8 +217,11 @@ class WorldMapManager extends Component {
     return facingDot >= -0.12;
   }
 
-  Future<void> playerCastFireball() async {
+  Future<void> playerCastFireball({Vector2? direction}) async {
     const mpCost = 3;
+    final shotDirection = (direction != null && direction.length2 > 0)
+        ? direction.normalized()
+        : player.aimDirection;
     if (controller.baseStats.mp < mpCost) {
       controller.setHudMessage('MP 不足，無法施放火球。');
       return;
@@ -233,7 +236,7 @@ class WorldMapManager extends Component {
 
     await _sceneRoot.add(
       PlayerFireballEffect(
-        direction: player.aimDirection,
+        direction: shotDirection,
         position: player.fireballOrigin,
         canTravelTo: canMoveTo,
         findEnemyHit: (targetRect) {
