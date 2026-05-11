@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../audio_manager.dart';
 import '../../state/game_state_controller.dart';
 import '../../state/models/game_models.dart';
 import '../responsive_overlay.dart';
@@ -54,19 +57,33 @@ class BattleOverlay extends StatelessWidget {
                     runSpacing: ui.value(8, compactValue: 6),
                     children: [
                       FilledButton(
-                        onPressed: () => controller.performBattleCommand(BattleCommand.attack),
+                        onPressed: () {
+                          unawaited(AudioManager.instance.playSwordHitSfx());
+                          controller.performBattleCommand(BattleCommand.attack);
+                        },
                         child: Text('攻擊', style: TextStyle(fontSize: ui.font(14, compactValue: 11))),
                       ),
                       FilledButton.tonal(
-                        onPressed: () => controller.performBattleCommand(BattleCommand.guard),
+                        onPressed: () {
+                          unawaited(AudioManager.instance.playActionSfx());
+                          controller.performBattleCommand(BattleCommand.guard);
+                        },
                         child: Text('防禦', style: TextStyle(fontSize: ui.font(14, compactValue: 11))),
                       ),
                       FilledButton.tonal(
-                        onPressed: () => controller.performBattleCommand(BattleCommand.item),
+                        onPressed: () {
+                          unawaited(AudioManager.instance.playActionSfx());
+                          controller.performBattleCommand(BattleCommand.item);
+                        },
                         child: Text('道具', style: TextStyle(fontSize: ui.font(14, compactValue: 11))),
                       ),
                       OutlinedButton(
-                        onPressed: battle.canRun ? () => controller.performBattleCommand(BattleCommand.run) : null,
+                        onPressed: battle.canRun
+                            ? () {
+                                unawaited(AudioManager.instance.playActionSfx());
+                                controller.performBattleCommand(BattleCommand.run);
+                              }
+                            : null,
                         child: Text('逃跑', style: TextStyle(fontSize: ui.font(14, compactValue: 11))),
                       ),
                     ],

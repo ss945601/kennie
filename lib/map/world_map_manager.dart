@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
+import '../audio_manager.dart';
 import '../components/actors/enemy_component.dart';
 import '../components/actors/npc_component.dart';
 import '../components/actors/player_component.dart';
@@ -169,6 +170,7 @@ class WorldMapManager extends Component {
     if (!player.tryAttack()) {
       return;
     }
+    unawaited(AudioManager.instance.playSwordHitSfx());
     await _sceneRoot.add(
       PlayerAttackEffect(
         direction: player.aimDirection,
@@ -262,6 +264,7 @@ class WorldMapManager extends Component {
             unawaited(_handleFireballHit(enemy, hitDirection)),
       ),
     );
+    unawaited(AudioManager.instance.playFireBallSfx());
     controller.setHudMessage('火球發射！消耗 $mpCost MP。');
   }
 

@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../audio_manager.dart';
 import '../../game/rpg_game.dart';
 import '../responsive_overlay.dart';
 import '../../state/game_state_controller.dart';
@@ -196,7 +197,10 @@ class _HudOverlayState extends State<HudOverlay> {
                     icon: Icons.pause_rounded,
                     label: '選單',
                     compact: ui.compact,
-                    onPressed: game.handlePauseToggle,
+                    onPressed: () {
+                      unawaited(AudioManager.instance.playActionSfx());
+                      game.handlePauseToggle();
+                    },
                   ),
                 ),
                 Positioned(
@@ -224,7 +228,10 @@ class _HudOverlayState extends State<HudOverlay> {
                             compact: ui.compact,
                             onPressed: controller.isFieldInputLocked
                                 ? null
-                                : () => game.handleInteraction(),
+                                : () {
+                                    unawaited(AudioManager.instance.playActionSfx());
+                                    game.handleInteraction();
+                                  },
                           ),
                           SizedBox(width: ui.value(12, compactValue: 8)),
                           _TouchActionButton(
@@ -255,7 +262,10 @@ class _HudOverlayState extends State<HudOverlay> {
                         compact: ui.compact,
                         onPressed: controller.isFieldInputLocked
                             ? null
-                            : game.handleQuickPotion,
+                            : () {
+                                unawaited(AudioManager.instance.playActionSfx());
+                                game.handleQuickPotion();
+                              },
                       ),
                     ],
                   ),

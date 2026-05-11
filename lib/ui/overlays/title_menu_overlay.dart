@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
 
+import '../../audio_manager.dart';
 import '../../game/overlay_ids.dart';
 import '../../game/rpg_game.dart';
 import '../responsive_overlay.dart';
@@ -98,7 +101,10 @@ class TitleMenuOverlay extends StatelessWidget {
                               Expanded(
                                 child: NesButton(
                                   type: NesButtonType.success,
-                                  onPressed: game.startNewGame,
+                                  onPressed: () {
+                                    unawaited(AudioManager.instance.playActionSfx());
+                                    game.startNewGame();
+                                  },
                                   buttonWidth: double.infinity,
                                   child: AutoSizeText(
                                     '開始遊戲',
@@ -117,6 +123,7 @@ class TitleMenuOverlay extends StatelessWidget {
                                 child: NesButton(
                                   type: NesButtonType.primary,
                                   onPressed: () async {
+                                    unawaited(AudioManager.instance.playActionSfx());
                                     final loaded = await game.continueGame();
                                     if (!context.mounted || loaded) {
                                       return;
@@ -143,6 +150,7 @@ class TitleMenuOverlay extends StatelessWidget {
                                 child: NesButton(
                                   type: NesButtonType.warning,
                                   onPressed: () {
+                                    unawaited(AudioManager.instance.playActionSfx());
                                     game.overlays.add(OverlayIds.titleSettings);
                                   },
                                   buttonWidth: double.infinity,
@@ -162,7 +170,10 @@ class TitleMenuOverlay extends StatelessWidget {
                               Expanded(
                                 child: NesButton(
                                   type: NesButtonType.error,
-                                  onPressed: game.exitGame,
+                                  onPressed: () {
+                                    unawaited(AudioManager.instance.playActionSfx());
+                                    game.exitGame();
+                                  },
                                   buttonWidth: double.infinity,
                                   child: AutoSizeText(
                                     '離開',

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../audio_manager.dart';
 import '../../state/game_state_controller.dart';
 import '../../state/models/game_models.dart';
 import '../responsive_overlay.dart';
@@ -123,7 +126,10 @@ class _DialogTextCardState extends State<_DialogTextCard> {
                     children: node.choices
                         .map(
                           (choice) => FilledButton.tonal(
-                            onPressed: () => widget.onChoiceSelected(choice),
+                            onPressed: () {
+                              unawaited(AudioManager.instance.playActionSfx());
+                              widget.onChoiceSelected(choice);
+                            },
                             child: Text(choice.label, style: TextStyle(fontSize: widget.compact ? 11 : 14)),
                           ),
                         )

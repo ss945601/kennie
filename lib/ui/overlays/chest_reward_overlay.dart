@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../audio_manager.dart';
 import '../../state/game_state_controller.dart';
 import '../responsive_overlay.dart';
 
@@ -49,7 +52,10 @@ class ChestRewardOverlay extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: FilledButton(
-                          onPressed: controller.confirmChestRewardDialog,
+                          onPressed: () {
+                            unawaited(AudioManager.instance.playActionSfx());
+                            controller.confirmChestRewardDialog();
+                          },
                           child: Text(
                             '確定',
                             style: TextStyle(fontSize: ui.font(13, compactValue: 11)),

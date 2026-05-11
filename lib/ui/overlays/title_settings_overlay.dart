@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
@@ -99,6 +101,7 @@ class _TitleSettingsOverlayState extends State<TitleSettingsOverlay> {
                           type: NesButtonType.primary,
                           buttonWidth: ui.value(120, compactValue: 92),
                           onPressed: () {
+                            unawaited(AudioManager.instance.playActionSfx());
                             widget.game.overlays.remove(OverlayIds.titleSettings);
                           },
                           child: AutoSizeText(

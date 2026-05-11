@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../audio_manager.dart';
 import '../../game/rpg_game.dart';
 import '../../state/game_state_controller.dart';
 import '../../state/models/game_models.dart';
@@ -74,7 +77,10 @@ class PauseMenuOverlay extends StatelessWidget {
                                   _goldPill(controller: controller, ui: ui),
                                   const Spacer(),
                                   OutlinedButton(
-                                    onPressed: controller.closePauseMenu,
+                                    onPressed: () {
+                                      unawaited(AudioManager.instance.playActionSfx());
+                                      controller.closePauseMenu();
+                                    },
                                     child: Text(
                                       '返回戰場',
                                       style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
@@ -97,7 +103,10 @@ class PauseMenuOverlay extends StatelessWidget {
                                   ),
                                   _goldPill(controller: controller, ui: ui),
                                   OutlinedButton(
-                                    onPressed: controller.closePauseMenu,
+                                    onPressed: () {
+                                      unawaited(AudioManager.instance.playActionSfx());
+                                      controller.closePauseMenu();
+                                    },
                                     child: Text(
                                       '返回戰場',
                                       style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
@@ -142,35 +151,50 @@ class PauseMenuOverlay extends StatelessWidget {
                                           runSpacing: ui.value(8, compactValue: 6),
                                           children: [
                                             FilledButton(
-                                              onPressed: game.saveGame,
+                                              onPressed: () async {
+                                                unawaited(AudioManager.instance.playActionSfx());
+                                                await game.saveGame();
+                                              },
                                               child: Text(
                                                 '存檔',
                                                 style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
                                               ),
                                             ),
                                             FilledButton.tonal(
-                                              onPressed: game.loadGame,
+                                              onPressed: () async {
+                                                unawaited(AudioManager.instance.playActionSfx());
+                                                await game.loadGame();
+                                              },
                                               child: Text(
                                                 '讀檔',
                                                 style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
                                               ),
                                             ),
                                             FilledButton.tonal(
-                                              onPressed: controller.usePotionQuick,
+                                              onPressed: () {
+                                                unawaited(AudioManager.instance.playActionSfx());
+                                                controller.usePotionQuick();
+                                              },
                                               child: Text(
                                                 '藥水 x$potionCount',
                                                 style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
                                               ),
                                             ),
                                             FilledButton.tonal(
-                                              onPressed: controller.useManaPotionQuick,
+                                              onPressed: () {
+                                                unawaited(AudioManager.instance.playActionSfx());
+                                                controller.useManaPotionQuick();
+                                              },
                                               child: Text(
                                                 '魔力藥水 x$manaPotionCount',
                                                 style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
                                               ),
                                             ),
                                             OutlinedButton(
-                                              onPressed: controller.returnToTitleMenu,
+                                              onPressed: () {
+                                                unawaited(AudioManager.instance.playActionSfx());
+                                                controller.returnToTitleMenu();
+                                              },
                                               child: Text(
                                                 '回初始選單',
                                                 style: TextStyle(fontSize: ui.font(12, compactValue: 10)),
@@ -267,8 +291,10 @@ class PauseMenuOverlay extends StatelessWidget {
                                             if (item.type == ItemType.weapon ||
                                                 item.type == ItemType.armor)
                                               TextButton(
-                                                onPressed: () =>
-                                                    controller.equipItem(entry.stableEntryId),
+                                                onPressed: () {
+                                                  unawaited(AudioManager.instance.playActionSfx());
+                                                  controller.equipItem(entry.stableEntryId);
+                                                },
                                                 child: Text(
                                                   '裝備',
                                                   style: TextStyle(
@@ -278,9 +304,14 @@ class PauseMenuOverlay extends StatelessWidget {
                                               )
                                             else if (item.type == ItemType.consumable)
                                               TextButton(
-                                                onPressed: item.id == 'mana_potion'
-                                                    ? controller.useManaPotionQuick
-                                                    : controller.usePotionQuick,
+                                                onPressed: () {
+                                                  unawaited(AudioManager.instance.playActionSfx());
+                                                  if (item.id == 'mana_potion') {
+                                                    controller.useManaPotionQuick();
+                                                  } else {
+                                                    controller.usePotionQuick();
+                                                  }
+                                                },
                                                 child: Text(
                                                   '使用',
                                                   style: TextStyle(
