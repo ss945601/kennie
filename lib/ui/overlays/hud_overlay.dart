@@ -56,6 +56,24 @@ class _HudOverlayState extends State<HudOverlay> {
                           width: MediaQuery.sizeOf(context).width * 0.9,
                           child: Row(
                             children: [
+                              Container(
+                                width: ui.value(78, compactValue: 64),
+                                height: ui.value(78, compactValue: 64),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white30,
+                                    width: 1.6,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/images/kennie.png',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: ui.value(10, compactValue: 8)),
                               Expanded(
                                 flex: 6,
                                 child: Column(
@@ -191,7 +209,7 @@ class _HudOverlayState extends State<HudOverlay> {
               ),
               if (ui.touchControls) ...[
                 Positioned(
-                  right: ui.value(16, compactValue: 8),
+                  right: ui.value(32, compactValue: 16),
                   top: ui.value(32, compactValue: 16),
                   child: _TouchActionButton(
                     icon: Icons.pause_rounded,
