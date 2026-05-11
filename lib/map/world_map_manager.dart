@@ -156,7 +156,7 @@ class WorldMapManager extends Component {
   }
 
   Future<void> playerCastFireball() async {
-    const mpCost = 8;
+    const mpCost = 3;
     if (controller.baseStats.mp < mpCost) {
       controller.setHudMessage('MP 不足，無法施放火球。');
       return;
