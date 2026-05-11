@@ -12,6 +12,7 @@ dependencies:
   auto_size_text: ^3.0.0
   audioplayers: ^6.5.1
   bonfire: ^3.17.0
+  just_audio: ^0.10.5
   flame: ^1.18.0
   flame_tiled: ^1.18.4
   nes_ui: ^0.30.0

@@ -107,6 +107,7 @@ class WorldMapManager extends Component {
     await _loadNpcs(definition);
     await _loadEnemies(definition);
     await _loadChests(definition);
+    _syncFieldBgmForCurrentScene();
 
     if (player.parent != null) {
       player.removeFromParent();
@@ -548,6 +549,14 @@ class WorldMapManager extends Component {
     }
   }
 
+  void _syncFieldBgmForCurrentScene() {
+    if (_enemies.any((enemy) => enemy.isMounted && enemy.definition.id == 'goblin_chief')) {
+      unawaited(AudioManager.instance.playBossBgm());
+      return;
+    }
+    unawaited(AudioManager.instance.playGameBgm());
+  }
+
   void _spawnEnemySkillProjectile(EnemyComponent enemy, Vector2 direction) {
     _sceneRoot.add(
       EnemyOrbProjectileEffect(
@@ -687,6 +696,9 @@ class WorldMapManager extends Component {
           defeatedFlag: enemyDef.hiddenWhenFlag,
           messagePrefix: enemyDef.label,
         );
+        if (enemyDef.isBoss) {
+          unawaited(AudioManager.instance.playGameBgm());
+        }
         enemy.removeFromParent();
         if (enemyDef.canRespawn && !enemyDef.isBoss && isMounted) {
           _scheduleRespawn(enemyDef, baseEnemy);
@@ -695,6 +707,9 @@ class WorldMapManager extends Component {
     );
     _enemies.add(enemy);
     await _sceneRoot.add(enemy);
+    if (enemyDef.isBoss) {
+      unawaited(AudioManager.instance.playBossBgm());
+    }
   }
 
   EnemyDefinition _scaledEnemy(EnemyDefinition baseEnemy) {

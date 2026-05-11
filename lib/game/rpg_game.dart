@@ -25,6 +25,7 @@ class RpgGame extends BonfireWithCollision {
   late final PlayerComponent hero;
   late final WorldMapManager worldMapManager;
   bool _isChangingScene = false;
+  bool _wasOnTitleMenu = true;
 
   @override
   Future<void> onLoad() async {
@@ -154,10 +155,17 @@ class RpgGame extends BonfireWithCollision {
 
   void _syncOverlays() {
     if (controller.showTitleMenu) {
+      if (!_wasOnTitleMenu) {
+        unawaited(AudioManager.instance.stopFieldBgm());
+      }
       unawaited(AudioManager.instance.playMenuBgm());
     } else {
       unawaited(AudioManager.instance.stopMenuBgm());
+      if (_wasOnTitleMenu) {
+        unawaited(AudioManager.instance.playGameBgm());
+      }
     }
+    _wasOnTitleMenu = controller.showTitleMenu;
     _setOverlay(OverlayIds.fade, true);
     _setOverlay(OverlayIds.titleMenu, controller.showTitleMenu);
     _setOverlay(OverlayIds.hud, !controller.showTitleMenu);
