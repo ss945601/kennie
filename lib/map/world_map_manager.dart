@@ -654,7 +654,7 @@ class WorldMapManager extends Component {
     }
 
     final scaled = _scaledEnemy(baseEnemy);
-    final enemySize = enemyDef.isBoss ? Vector2(56, 64) : Vector2(40, 48);
+    final enemySize = enemyDef.isBoss ? Vector2(72, 84) : Vector2(40, 48);
     final enemy = EnemyComponent(
       position: spawnPosition,
       size: enemySize,
