@@ -232,7 +232,7 @@ class GameStateController extends ChangeNotifier {
         'ending': const DialogNode(
           id: 'ending',
           speaker: '系統',
-          text: '你打敗了大魔王跟長老，因為你的出現，村莊的人都死光光了～可喜可賀',
+          text: '你打敗了大魔王跟長老，因為你的出現，村莊的人都死光光了～可喜可賀 又可以再玩一次！(Bad End)',
         ),
       },
     );
