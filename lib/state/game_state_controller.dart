@@ -239,6 +239,23 @@ class GameStateController extends ChangeNotifier {
     startDialog(dialog);
   }
 
+  void _showGoodEndDialog() {
+    final dialog = DialogTree(
+      startNodeId: 'good_end',
+      nodes: {
+        'good_end': const DialogNode(
+          id: 'good_end',
+          speaker: '系統',
+          text: '你成功拯救了村莊(Good End)',
+          choices: [
+            DialogChoice(label: '確定', actionKey: 'good_end_confirm'),
+          ],
+        ),
+      },
+    );
+    startDialog(dialog);
+  }
+
   void _showDeathDialog() {
     startDialog(
       const DialogTree(
@@ -631,8 +648,12 @@ class GameStateController extends ChangeNotifier {
         _showReportToElderDialog();
       }
     } else if (enemy.id == 'elder_demon_lord') {
-      _pendingGameOver = true;
-      _showEndingDialog();
+      if (flag('legend_set_trigger')) {
+        _showGoodEndDialog();
+      } else {
+        _pendingGameOver = true;
+        _showEndingDialog();
+      }
     }
     gainExperience(enemy.experienceReward);
     final prefix = messagePrefix == null ? '' : '$messagePrefix ';
@@ -882,6 +903,9 @@ class GameStateController extends ChangeNotifier {
         onLoadGameRequested?.call();
         break;
       case 'death_return_menu':
+        returnToTitleMenu();
+        break;
+      case 'good_end_confirm':
         returnToTitleMenu();
         break;
       default:

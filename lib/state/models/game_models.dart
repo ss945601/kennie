@@ -120,7 +120,7 @@ const Map<String, ItemDefinition> itemCatalog = {
   'cangxiang': ItemDefinition(
     id: 'cangxiang',
     name: '蒼響',
-    description: '傳說之刃，ATK +999，MP +999。',
+    description: '傳說之刃，ATK +999，MP +999。 當遇到魔物時就會發出光芒',
     type: ItemType.weapon,
     attackBonus: 999,
     maxMpBonus: 999,
@@ -130,7 +130,7 @@ const Map<String, ItemDefinition> itemCatalog = {
   'zamazenta_armor': ItemDefinition(
     id: 'zamazenta_armor',
     name: '藏瑪然特',
-    description: '傳說防具，DEF +999，MP +999。',
+    description: '傳說之盾，DEF +999，MP +999。 當遇到魔物時就會發出光芒',
     type: ItemType.armor,
     defenseBonus: 999,
     maxHpBonus: 999,

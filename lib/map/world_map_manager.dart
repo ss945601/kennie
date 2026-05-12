@@ -14,6 +14,7 @@ import '../components/effects/damage_number_effect.dart';
 import '../components/effects/enemy_attack_effect.dart';
 import '../components/effects/enemy_orb_projectile_effect.dart';
 import '../components/effects/floating_text_effect.dart';
+import '../components/effects/player_legend_aura_effect.dart';
 import '../components/effects/player_attack_effect.dart';
 import '../components/effects/player_fireball_effect.dart';
 import '../components/objects/chest_component.dart';
@@ -64,8 +65,10 @@ class WorldMapManager extends Component {
   bool _teleportLatch = false;
   int _seenEquipmentPickupSerial = 0;
   PhantomCloneComponent? _phantomClone;
+  PlayerLegendAuraEffect? _legendAura;
   double _phantomCloneRespawnRemaining = 0;
   double _phantomCloneAttackCooldownRemaining = 0;
+  static const double _elderAuraRange = 86;
 
   static final List<Vector2> _whirlwindDirections = <Vector2>[
     Vector2(1, 0),
@@ -108,6 +111,7 @@ class WorldMapManager extends Component {
     _teleportLatch = false;
     _activeDefinition = definition;
     _phantomClone = null;
+    _legendAura = null;
     _phantomCloneAttackCooldownRemaining = 0;
 
     mapPixelSize = Vector2(definition.sceneSize.x, definition.sceneSize.y);
@@ -460,6 +464,7 @@ class WorldMapManager extends Component {
   @override
   void update(double dt) {
     super.update(dt);
+    _syncLegendAuraEffect();
     _maybeShowEquipmentPickupText();
     _updatePhantomClone(dt);
     _tickCombatCooldowns(dt);
@@ -508,6 +513,56 @@ class WorldMapManager extends Component {
       return false;
     }
     return true;
+  }
+
+  void _syncLegendAuraEffect() {
+    final shouldGlow = _shouldPlayerGlowNearElder();
+    final aura = _legendAura;
+    if (shouldGlow) {
+      if (aura != null && aura.isMounted) {
+        return;
+      }
+      final nextAura = PlayerLegendAuraEffect(player: player);
+      _legendAura = nextAura;
+      _sceneRoot.add(nextAura);
+      return;
+    }
+
+    if (aura != null && aura.isMounted) {
+      aura.removeFromParent();
+    }
+    _legendAura = null;
+  }
+
+  bool _shouldPlayerGlowNearElder() {
+    final weaponId = controller.equippedWeaponEntry?.itemId;
+    final armorId = controller.equippedArmorEntry?.itemId;
+    final hasLegendSet =
+        weaponId == 'cangxiang' && armorId == 'zamazenta_armor';
+    if (!hasLegendSet) {
+      return false;
+    }
+
+    NpcComponent? elder;
+    for (final interactable in _interactables) {
+      if (interactable is! NpcComponent || !interactable.isMounted) {
+        continue;
+      }
+      if (interactable.npcId == 'elder') {
+        elder = interactable;
+        break;
+      }
+    }
+    if (elder == null) {
+      return false;
+    }
+
+    final playerCenter = player.bodyRect.center;
+    final elderCenter = elder.bodyRect.center;
+    final dx = playerCenter.dx - elderCenter.dx;
+    final dy = playerCenter.dy - elderCenter.dy;
+    final inRange = dx * dx + dy * dy <= _elderAuraRange * _elderAuraRange;
+    return inRange;
   }
 
   bool _canEnemyMoveTo(EnemyComponent movingEnemy, Rect targetRect) {
@@ -1830,6 +1885,9 @@ class WorldMapManager extends Component {
         }
         final hasKey = controller.flag('has_key_01');
         final defeatedChief = controller.flag('beat_goblin_chief');
+        final hasLegendSet =
+            controller.equippedWeaponEntry?.itemId == 'cangxiang' &&
+            controller.equippedArmorEntry?.itemId == 'zamazenta_armor';
         return DialogTree(
           startNodeId: 'start',
           nodes: {
@@ -1871,11 +1929,28 @@ class WorldMapManager extends Component {
               text: '迷霧會把你困住，直到你帶回關鍵道具並擊敗首領。',
               nextNodeId: 'finish',
             ),
-            'finish': const DialogNode(
+            'finish': DialogNode(
               id: 'finish',
               speaker: '長老',
               text: '記得按 J 攻擊、Space 互動，Esc 可以打開選單。目標是拯救村莊。',
+              choices: hasLegendSet
+                  ? const [
+                      DialogChoice(
+                        label: '......',
+                        setFlagKey: 'legend_set_trigger',
+                        nextNodeId: 'legend_reveal',
+                      ),
+                      DialogChoice(label: '告辭'),
+                    ]
+                  : const [],
             ),
+            if (hasLegendSet)
+              'legend_reveal': const DialogNode(
+                id: 'legend_reveal',
+                speaker: '長老',
+                text: '可惡居然被你發現了, 那我不演了! 降臨吧！大魔王',
+                setFlagOnEnter: 'elder_boss_triggered',
+              ),
           },
         );
     }
