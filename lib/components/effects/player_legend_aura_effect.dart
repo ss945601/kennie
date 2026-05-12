@@ -26,6 +26,7 @@ class PlayerLegendAuraEffect extends PositionComponent {
     await super.onLoad();
     _outerRing = CircleComponent(
       radius: 22,
+      position: Vector2.all(36),
       anchor: Anchor.center,
       paint: Paint()
         ..color = const Color(0x66FFE082)
@@ -34,6 +35,7 @@ class PlayerLegendAuraEffect extends PositionComponent {
     );
     _innerCore = CircleComponent(
       radius: 12,
+      position: Vector2.all(36),
       anchor: Anchor.center,
       paint: Paint()
         ..color = const Color(0x88FFF3C4)
