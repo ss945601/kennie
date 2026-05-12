@@ -47,6 +47,13 @@ class NpcComponent extends PositionComponent implements InteractableEntity {
   @override
   Rect get interactionBounds => toAbsoluteRect();
 
+  Rect get bodyRect => Rect.fromLTWH(
+    position.x + size.x * 0.18,
+    position.y + size.y * 0.48,
+    size.x * 0.64,
+    size.y * 0.42,
+  );
+
   @override
   Future<void> interact() => onInteract();
 

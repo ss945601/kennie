@@ -176,6 +176,14 @@ const mapDefinitions = <String, MapDefinition>{
         idleFrames: 3,
         hiddenWhenFlag: 'report_to_elder_prompted',
       ),
+      SceneNpcDefinition(
+        id: 'sign',
+        label: '告示牌',
+        x: 30,
+        y: 250,
+        idleFrames: 1,
+        spritePath: 'items/sign.png',
+      ),
     ],
     enemies: [
       SceneEnemyDefinition(
@@ -191,7 +199,7 @@ const mapDefinitions = <String, MapDefinition>{
         enemyId: 'bat',
         label: '樹梢蝙蝠',
         x: 640,
-        y: 128,
+        y: 408,
         hiddenWhenFlag: 'beat_bat_01',
       ),
       SceneEnemyDefinition(

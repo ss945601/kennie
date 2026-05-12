@@ -168,6 +168,14 @@ class WorldMapManager extends Component {
     if (!canMoveTo(targetRect)) {
       return false;
     }
+    for (final interactable in _interactables) {
+      if (interactable is! NpcComponent || !interactable.isMounted) {
+        continue;
+      }
+      if (interactable.bodyRect.inflate(2).overlaps(targetRect)) {
+        return false;
+      }
+    }
     for (final enemy in _enemies) {
       if (!enemy.isMounted) {
         continue;
@@ -1682,6 +1690,17 @@ class WorldMapManager extends Component {
                   : controller.flag('has_key_01')
                   ? '你進了迷霧森林會不斷繞回來，先找迷霧羅盤，再打倒首領。'
                   : '右下木橋旁補給箱有舊鑰匙，先找到它再出發。',
+            ),
+          },
+        );
+      case 'sign':
+        return DialogTree(
+          startNodeId: 'start',
+          nodes: {
+            'start': const DialogNode(
+              id: 'start',
+              speaker: '路標',
+              text: '勇敢的Kennie冒險者，你的第一步是征途的開始，也是寶藏的盡頭。',
             ),
           },
         );
