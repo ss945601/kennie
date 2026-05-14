@@ -228,6 +228,22 @@ class GameStateController extends ChangeNotifier {
     startDialog(dialog);
   }
 
+  void _showSaveSuccessDialog() {
+    final dialog = DialogTree(
+      startNodeId: 'save_success',
+      nodes: {
+        'save_success': const DialogNode(
+          id: 'save_success',
+          speaker: '系統',
+          text: '遊戲已儲存。',
+        ),
+      },
+    );
+    startDialog(dialog);
+    hudMessage = '遊戲已儲存。';
+    notifyListeners();
+  }
+
   void _showEndingOverlay({required bool good}) {
     showEnding = true;
     endingImageAsset = good
@@ -427,8 +443,12 @@ class GameStateController extends ChangeNotifier {
     );
     await _saveRepository.save(snapshot);
     hasSaveFile = true;
-    hudMessage = '遊戲已儲存。';
-    notifyListeners();
+    if (activeDialog == null && activeChestRewardDialog == null) {
+      _showSaveSuccessDialog();
+    } else {
+      hudMessage = '遊戲已儲存。';
+      notifyListeners();
+    }
   }
 
   Future<bool> loadGame() async {

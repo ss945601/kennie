@@ -80,8 +80,35 @@ class WorldMapManager extends Component {
   @override
   Future<void> onLoad() async {
     await add(_sceneRoot);
-    controller.onNodeFlagSet = (key) =>
-        unawaited(_spawnEnemiesUnlockedByFlag(key));
+    controller.onNodeFlagSet = (key) {
+      unawaited(_spawnEnemiesUnlockedByFlag(key));
+      _removeInteractablesHiddenByFlag(key);
+    };
+  }
+
+  void _removeInteractablesHiddenByFlag(String flagKey) {
+    final definition = _activeDefinition;
+    if (definition == null) {
+      return;
+    }
+    final hiddenNpcIds = definition.npcs
+        .where((npcDef) => npcDef.hiddenWhenFlag == flagKey)
+        .map((npcDef) => npcDef.id)
+        .toSet();
+    if (hiddenNpcIds.isEmpty) {
+      return;
+    }
+
+    final removed = _interactables
+        .whereType<NpcComponent>()
+        .where((npc) => hiddenNpcIds.contains(npc.npcId))
+        .toList();
+    for (final npc in removed) {
+      _interactables.remove(npc);
+      if (npc.isMounted) {
+        npc.removeFromParent();
+      }
+    }
   }
 
   Future<void> loadMap(
