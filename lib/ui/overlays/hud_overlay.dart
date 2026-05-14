@@ -191,7 +191,8 @@ class _HudOverlayState extends State<HudOverlay> {
                         child: Text(
                           controller.hudMessage,
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: Colors.yellowAccent,
+                            fontWeight: FontWeight.w600,
                             fontSize: metaFontSize,
                           ),
                         ),
