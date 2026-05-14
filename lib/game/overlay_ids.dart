@@ -1,6 +1,7 @@
 abstract final class OverlayIds {
   static const titleMenu = 'TitleMenu';
   static const opening = 'Opening';
+  static const ending = 'Ending';
   static const titleSettings = 'TitleSettings';
   static const hud = 'Hud';
   static const dialog = 'Dialog';

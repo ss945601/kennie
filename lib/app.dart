@@ -9,6 +9,7 @@ import 'state/services/save_repository.dart';
 import 'ui/overlays/battle_overlay.dart';
 import 'ui/overlays/chest_reward_overlay.dart';
 import 'ui/overlays/dialog_overlay.dart';
+import 'ui/overlays/ending_overlay.dart';
 import 'ui/overlays/hud_overlay.dart';
 import 'ui/overlays/opening_overlay.dart';
 import 'ui/overlays/pause_menu_overlay.dart';
@@ -86,6 +87,7 @@ class _KennieAppState extends State<KennieApp> {
             overlayBuilderMap: {
               OverlayIds.titleMenu: (context, game) => TitleMenuOverlay(game: game),
               OverlayIds.opening: (context, game) => OpeningOverlay(game: game),
+              OverlayIds.ending: (context, game) => EndingOverlay(game: game),
               OverlayIds.titleSettings: (context, game) => TitleSettingsOverlay(game: game),
               OverlayIds.hud: (context, game) => HudOverlay(game: game),
               OverlayIds.dialog: (context, game) => const DialogOverlay(),

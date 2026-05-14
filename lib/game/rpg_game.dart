@@ -194,24 +194,23 @@ class RpgGame extends BonfireWithCollision {
 
   void _syncOverlays() {
     _syncPauseState();
-    if (controller.showTitleMenu) {
+    if (controller.showTitleMenu || controller.showOpening || controller.showEnding) {
       if (!_wasOnTitleOrOpening) {
         unawaited(AudioManager.instance.stopFieldBgm());
       }
       unawaited(AudioManager.instance.playMenuBgm());
-    } else if (controller.showOpening) {
-      // Keep title/menu music during the opening sequence.
     } else {
       unawaited(AudioManager.instance.stopMenuBgm());
       if (_wasOnTitleOrOpening) {
         unawaited(AudioManager.instance.playGameBgm());
       }
     }
-    _wasOnTitleOrOpening = controller.showTitleMenu || controller.showOpening;
+    _wasOnTitleOrOpening = controller.showTitleMenu || controller.showOpening || controller.showEnding;
     _setOverlay(OverlayIds.fade, true);
     _setOverlay(OverlayIds.titleMenu, controller.showTitleMenu);
     _setOverlay(OverlayIds.opening, controller.showOpening);
-    _setOverlay(OverlayIds.hud, !controller.showTitleMenu && !controller.showOpening);
+    _setOverlay(OverlayIds.ending, controller.showEnding);
+    _setOverlay(OverlayIds.hud, !controller.showTitleMenu && !controller.showOpening && !controller.showEnding);
     _setOverlay(OverlayIds.pauseMenu, controller.isPauseMenuOpen);
     _setOverlay(OverlayIds.dialog, controller.activeDialog != null);
     _setOverlay(OverlayIds.chestReward, controller.activeChestRewardDialog != null);

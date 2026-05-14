@@ -18,6 +18,10 @@ class GameStateController extends ChangeNotifier {
 
   bool showTitleMenu = true;
   bool showOpening = false;
+  bool showEnding = false;
+  String? endingImageAsset;
+  bool _pendingEnding = false;
+  bool _pendingEndingIsGood = false;
   bool hasSaveFile = false;
   bool isPauseMenuOpen = false;
   double transitionOpacity = 1;
@@ -226,35 +230,62 @@ class GameStateController extends ChangeNotifier {
     startDialog(dialog);
   }
 
+  void _showEndingOverlay({required bool good}) {
+    showEnding = true;
+    endingImageAsset = good
+        ? 'assets/images/good_ending.png'
+        : 'assets/images/bad_ending.png';
+    activeDialog = null;
+    activeChestRewardDialog = null;
+    isPauseMenuOpen = false;
+    _chestRewardDialogCompleter?.complete();
+    _chestRewardDialogCompleter = null;
+    notifyListeners();
+  }
+
   void _showEndingDialog() {
-    final dialog = DialogTree(
-      startNodeId: 'ending',
-      nodes: {
-        'ending': const DialogNode(
-          id: 'ending',
-          speaker: '系統',
-          text: '你打敗了大魔王跟長老，因為你的出現，村莊的人都死光光了～可喜可賀 又可以再玩一次！(Bad End)',
-        ),
-      },
+    _pendingEnding = true;
+    _pendingEndingIsGood = false;
+    startDialog(
+      const DialogTree(
+        startNodeId: 'ending',
+        nodes: {
+          'ending': DialogNode(
+            id: 'ending',
+            speaker: '系統',
+            text:
+                '你打敗了大魔王跟長老，因為你的出現，村莊的人都死光光了～可喜可賀 又可以再玩一次！(Bad End)',
+          ),
+        },
+      ),
     );
-    startDialog(dialog);
   }
 
   void _showGoodEndDialog() {
-    final dialog = DialogTree(
-      startNodeId: 'good_end',
-      nodes: {
-        'good_end': const DialogNode(
-          id: 'good_end',
-          speaker: '系統',
-          text: '你成功拯救了村莊(Good End)',
-          choices: [
-            DialogChoice(label: '確定', actionKey: 'good_end_confirm'),
-          ],
-        ),
-      },
+    _pendingEnding = true;
+    _pendingEndingIsGood = true;
+    startDialog(
+      const DialogTree(
+        startNodeId: 'good_end',
+        nodes: {
+          'good_end': DialogNode(
+            id: 'good_end',
+            speaker: '系統',
+            text: '你成功拯救了村莊(Good End)',
+          ),
+        },
+      ),
     );
-    startDialog(dialog);
+  }
+
+  void finishEndingOverlay() {
+    if (!showEnding) {
+      return;
+    }
+    showEnding = false;
+    endingImageAsset = null;
+    notifyListeners();
+    returnToTitleMenu();
   }
 
   void _showDeathDialog() {
@@ -279,12 +310,14 @@ class GameStateController extends ChangeNotifier {
   bool get isFieldInputLocked =>
       showTitleMenu ||
       showOpening ||
+      showEnding ||
       isPauseMenuOpen ||
       activeDialog != null ||
       activeChestRewardDialog != null ||
       transitionOpacity > 0.05;
 
   bool get isOverlayBusy =>
+      showEnding ||
       activeDialog != null ||
       activeChestRewardDialog != null ||
       isPauseMenuOpen;
@@ -475,6 +508,8 @@ class GameStateController extends ChangeNotifier {
 
   void returnToTitleMenu() {
     showTitleMenu = true;
+    showEnding = false;
+    endingImageAsset = null;
     isPauseMenuOpen = false;
     activeDialog = null;
     activeChestRewardDialog = null;
@@ -825,6 +860,13 @@ class GameStateController extends ChangeNotifier {
       if (_pendingGameOver) {
         _pendingGameOver = false;
         returnToTitleMenu();
+        return;
+      }
+      if (_pendingEnding) {
+        final isGood = _pendingEndingIsGood;
+        _pendingEnding = false;
+        _pendingEndingIsGood = false;
+        _showEndingOverlay(good: isGood);
         return;
       }
       hudMessage = '對話結束。';
