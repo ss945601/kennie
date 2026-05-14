@@ -50,7 +50,7 @@ class PlayerFireballEffect extends PositionComponent {
           _assetPath,
           SpriteAnimationData.sequenced(
             amount: 3,
-            stepTime: 0.55,
+            stepTime: 0.055,
             textureSize: Vector2.all(23),
           ),
         ),
