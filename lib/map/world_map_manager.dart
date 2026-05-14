@@ -150,6 +150,11 @@ class WorldMapManager extends Component {
         _spawnPoints[desiredSpawnId] ??
         Vector2(64, 64);
     player.snapTo(spawnPosition);
+    if (_enemies.any(
+      (enemy) => enemy.isMounted && enemy.bodyRect.overlaps(player.bodyRect),
+    )) {
+      _resolvePlayerOverlapAfterBossSpawn();
+    }
     if (controller.hasMistReaverEquipped &&
         _phantomCloneRespawnRemaining <= 0) {
       await _spawnPhantomClone();
@@ -1307,6 +1312,41 @@ class WorldMapManager extends Component {
     await _sceneRoot.add(enemy);
     if (enemyDef.isBoss) {
       unawaited(AudioManager.instance.playBossBgm());
+      if (enemy.bodyRect.overlaps(player.bodyRect)) {
+        _resolvePlayerOverlapAfterBossSpawn();
+      }
+    }
+  }
+
+  void _resolvePlayerOverlapAfterBossSpawn() {
+    final originalPosition = player.position.clone();
+    final candidateOffsets = <Vector2>[
+      Vector2(0, -32),
+      Vector2(0, 32),
+      Vector2(-32, 0),
+      Vector2(32, 0),
+      Vector2(-32, -32),
+      Vector2(-32, 32),
+      Vector2(32, -32),
+      Vector2(32, 32),
+      Vector2(0, -64),
+      Vector2(0, 64),
+      Vector2(-64, 0),
+      Vector2(64, 0),
+    ];
+
+    for (final offset in candidateOffsets) {
+      final candidate = originalPosition + offset;
+      final targetRect = Rect.fromLTWH(
+        candidate.x + 12,
+        candidate.y + 18,
+        24,
+        24,
+      );
+      if (canPlayerMoveTo(targetRect)) {
+        player.snapTo(candidate);
+        return;
+      }
     }
   }
 

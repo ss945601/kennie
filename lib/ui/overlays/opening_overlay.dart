@@ -34,7 +34,7 @@ class _OpeningOverlayState extends State<OpeningOverlay> {
   }
 
   void _startOpeningTimer() {
-    _timer = Timer(const Duration(seconds: 10), _beginFadeOut);
+    _timer = Timer(const Duration(seconds: 50), _beginFadeOut);
   }
 
   void _beginFadeOut() {
