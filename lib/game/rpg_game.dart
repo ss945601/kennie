@@ -25,8 +25,9 @@ class RpgGame extends BonfireWithCollision {
   late final PlayerComponent hero;
   late final WorldMapManager worldMapManager;
   bool _isChangingScene = false;
-  bool _wasOnTitleMenu = true;
+  bool _wasOnTitleOrOpening = true;
   bool _isEnginePausedForPauseMenu = false;
+  Future<void>? _pendingOpeningLoadFuture;
 
   @override
   Future<void> onLoad() async {
@@ -55,13 +56,27 @@ class RpgGame extends BonfireWithCollision {
 
   Future<void> startNewGame() async {
     controller.startNewGame();
-    await _runTransition(() async {
-      await worldMapManager.loadMap(
-        controller.currentMapId,
-        spawnId: controller.currentSpawnId,
-      );
-      camera.follow(hero);
-    });
+    controller.showOpening = true;
+    _syncOverlays();
+    _pendingOpeningLoadFuture = worldMapManager.loadMap(
+      controller.currentMapId,
+      spawnId: controller.currentSpawnId,
+    );
+    await _pendingOpeningLoadFuture;
+    camera.follow(hero);
+  }
+
+  Future<void> finishOpening() async {
+    if (!controller.showOpening) {
+      return;
+    }
+    controller.showOpening = false;
+    _syncOverlays();
+    if (_pendingOpeningLoadFuture != null) {
+      await _pendingOpeningLoadFuture;
+      _pendingOpeningLoadFuture = null;
+    }
+    camera.follow(hero);
   }
 
   Future<bool> continueGame() async {
@@ -180,20 +195,23 @@ class RpgGame extends BonfireWithCollision {
   void _syncOverlays() {
     _syncPauseState();
     if (controller.showTitleMenu) {
-      if (!_wasOnTitleMenu) {
+      if (!_wasOnTitleOrOpening) {
         unawaited(AudioManager.instance.stopFieldBgm());
       }
       unawaited(AudioManager.instance.playMenuBgm());
+    } else if (controller.showOpening) {
+      // Keep title/menu music during the opening sequence.
     } else {
       unawaited(AudioManager.instance.stopMenuBgm());
-      if (_wasOnTitleMenu) {
+      if (_wasOnTitleOrOpening) {
         unawaited(AudioManager.instance.playGameBgm());
       }
     }
-    _wasOnTitleMenu = controller.showTitleMenu;
+    _wasOnTitleOrOpening = controller.showTitleMenu || controller.showOpening;
     _setOverlay(OverlayIds.fade, true);
     _setOverlay(OverlayIds.titleMenu, controller.showTitleMenu);
-    _setOverlay(OverlayIds.hud, !controller.showTitleMenu);
+    _setOverlay(OverlayIds.opening, controller.showOpening);
+    _setOverlay(OverlayIds.hud, !controller.showTitleMenu && !controller.showOpening);
     _setOverlay(OverlayIds.pauseMenu, controller.isPauseMenuOpen);
     _setOverlay(OverlayIds.dialog, controller.activeDialog != null);
     _setOverlay(OverlayIds.chestReward, controller.activeChestRewardDialog != null);

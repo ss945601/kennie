@@ -17,6 +17,7 @@ class GameStateController extends ChangeNotifier {
   static const double _rareEquipmentChanceWithinEquipmentDrops = 0.10;
 
   bool showTitleMenu = true;
+  bool showOpening = false;
   bool hasSaveFile = false;
   bool isPauseMenuOpen = false;
   double transitionOpacity = 1;
@@ -277,6 +278,7 @@ class GameStateController extends ChangeNotifier {
 
   bool get isFieldInputLocked =>
       showTitleMenu ||
+      showOpening ||
       isPauseMenuOpen ||
       activeDialog != null ||
       activeChestRewardDialog != null ||
