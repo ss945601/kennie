@@ -194,11 +194,14 @@ class RpgGame extends BonfireWithCollision {
 
   void _syncOverlays() {
     _syncPauseState();
-    if (controller.showTitleMenu || controller.showOpening || controller.showEnding) {
-      if (!_wasOnTitleOrOpening) {
-        unawaited(AudioManager.instance.stopFieldBgm());
+    if (controller.showTitleMenu ||
+        controller.showOpening ||
+        controller.showEnding) {
+      unawaited(AudioManager.instance.stopFieldBgm());
+      if (!controller.showOpening) {
+        unawaited(AudioManager.instance.playMenuBgm());
       }
-      unawaited(AudioManager.instance.playMenuBgm());
+
     } else {
       unawaited(AudioManager.instance.stopMenuBgm());
       if (_wasOnTitleOrOpening) {

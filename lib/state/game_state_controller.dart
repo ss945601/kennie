@@ -82,8 +82,6 @@ class GameStateController extends ChangeNotifier {
   /// Called when the player confirms to load save after dying.
   void Function()? onLoadGameRequested;
 
-  bool _pendingGameOver = false;
-
   int get equipmentPickupSerial => _equipmentPickupSerial;
 
   InventoryEntry? get equippedWeaponEntry =>
@@ -688,7 +686,6 @@ class GameStateController extends ChangeNotifier {
       if (flag('legend_set_trigger')) {
         _showGoodEndDialog();
       } else {
-        _pendingGameOver = true;
         _showEndingDialog();
       }
     }
@@ -857,11 +854,6 @@ class GameStateController extends ChangeNotifier {
     final nextNodeId = currentNode.nextNodeId;
     if (nextNodeId == null) {
       activeDialog = null;
-      if (_pendingGameOver) {
-        _pendingGameOver = false;
-        returnToTitleMenu();
-        return;
-      }
       if (_pendingEnding) {
         final isGood = _pendingEndingIsGood;
         _pendingEnding = false;

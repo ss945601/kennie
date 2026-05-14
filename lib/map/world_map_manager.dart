@@ -1129,6 +1129,10 @@ class WorldMapManager extends Component {
   }
 
   void _syncFieldBgmForCurrentScene() {
+    if (controller.showTitleMenu || controller.showOpening || controller.showEnding) {
+      unawaited(AudioManager.instance.stopFieldBgm());
+      return;
+    }
     if (_enemies.any(
       (enemy) => enemy.isMounted && enemy.definition.id == 'goblin_chief',
     )) {
@@ -1299,7 +1303,9 @@ class WorldMapManager extends Component {
           messagePrefix: enemyDef.label,
         );
         if (enemyDef.isBoss) {
-          unawaited(AudioManager.instance.playGameBgm());
+          if (!controller.showTitleMenu && !controller.showOpening && !controller.showEnding) {
+            unawaited(AudioManager.instance.playGameBgm());
+          }
         }
         enemy.removeFromParent();
         if (enemyDef.canRespawn && !enemyDef.isBoss && isMounted) {
