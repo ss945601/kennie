@@ -92,7 +92,8 @@ class TitleMenuOverlay extends StatelessWidget {
                             },
                           ),
                         ),
-                        Expanded(
+                        SizedBox(
+                          height: 90,
                           child: NesContainer(
                             padding: ui.all(8, compactValue: 5),
                             width: ui.compact ? size.width * 0.92 : 700,
