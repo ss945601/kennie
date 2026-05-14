@@ -167,6 +167,13 @@ class _HudOverlayState extends State<HudOverlay> {
                                             fontSize: metaFontSize,
                                           ),
                                         ),
+                                        Text(
+                                          '金幣 ${controller.gold}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: metaFontSize,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ],

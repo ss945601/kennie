@@ -31,14 +31,43 @@ class _DialogOverlayState extends State<DialogOverlay> {
             if (session == null) {
               return const SizedBox.shrink();
             }
+            final showGoldBadge = session.currentNode.speaker == '商人' || session.currentNode.speaker == '迷霧商旅';
             return Padding(
               padding: ui.all(16, compactValue: 12),
-              child: _DialogTextCard(
-                key: _dialogKey,
-                session: session,
-                onAdvance: controller.advanceDialog,
-                onChoiceSelected: controller.chooseDialogChoice,
-                compact: ui.compact,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (showGoldBadge) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ui.value(10, compactValue: 8),
+                        vertical: ui.value(6, compactValue: 4),
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xB2000000),
+                        borderRadius: BorderRadius.circular(ui.radius(12, compactValue: 10)),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text(
+                        '金幣 ${controller.gold}',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: ui.font(12, compactValue: 10),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: ui.value(8, compactValue: 6)),
+                  ],
+                  _DialogTextCard(
+                    key: _dialogKey,
+                    session: session,
+                    onAdvance: controller.advanceDialog,
+                    onChoiceSelected: controller.chooseDialogChoice,
+                    compact: ui.compact,
+                  ),
+                ],
               ),
             );
           },

@@ -1686,7 +1686,9 @@ class WorldMapManager extends Component {
             'start': DialogNode(
               id: 'start',
               speaker: '商人',
-              text: claimedGift ? '補給都準備好了，缺什麼就說。' : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。',
+              text: claimedGift
+                  ? '補給都準備好了，缺什麼就說。你目前有 ${controller.gold} 金幣。'
+                  : '新冒險家？拿著這瓶藥水，別在村外第一戰就倒下。你目前有 ${controller.gold} 金幣。',
               choices: claimedGift
                   ? const [
                       DialogChoice(
@@ -1760,13 +1762,13 @@ class WorldMapManager extends Component {
           },
         );
       case 'trader_wanderer':
-        return const DialogTree(
+        return DialogTree(
           startNodeId: 'start',
           nodes: {
             'start': DialogNode(
               id: 'start',
               speaker: '迷霧商旅',
-              text: '困在迷霧裡了吧？我這裡有貨，隱藏神裝只能打怪掉，我可不賣。',
+              text: '困在迷霧裡了吧？我這裡有貨，隱藏神裝只能打怪掉，我可不賣。你目前有 ${controller.gold} 金幣。',
               choices: [
                 DialogChoice(
                   label: '買治療藥水 (20G)',
