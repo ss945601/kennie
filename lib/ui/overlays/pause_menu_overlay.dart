@@ -42,7 +42,7 @@ class PauseMenuOverlay extends StatelessWidget {
                           ui.radius(18, compactValue: 14),
                         ),
                         border: Border.all(
-                          width: 2.0,
+                          width: 4.0,
                           color: const Color.fromARGB(31, 238, 235, 235),
                         ),
                       ),
@@ -109,6 +109,7 @@ class PauseMenuOverlay extends StatelessWidget {
                                           child: Text(
                                             '返回戰場',
                                             style: TextStyle(
+                                              color: Colors.white,
                                               fontSize: ui.font(
                                                 20,
                                                 compactValue: 16,
@@ -164,6 +165,7 @@ class PauseMenuOverlay extends StatelessWidget {
                                         child: Text(
                                           '返回戰場',
                                           style: TextStyle(
+                                            color: Colors.white,
                                             fontSize: ui.font(
                                               28,
                                               compactValue: 24,
@@ -292,7 +294,7 @@ class PauseMenuOverlay extends StatelessWidget {
                                                     color: Colors.white,
                                                     fontSize: ui.font(
                                                       14,
-                                                      compactValue: 11,
+                                                      compactValue: 12,
                                                     ),
                                                   ),
                                                 ),
@@ -318,9 +320,10 @@ class PauseMenuOverlay extends StatelessWidget {
                                                     child: Text(
                                                       '裝備',
                                                       style: TextStyle(
+                                                        color: const Color.fromARGB(255, 216, 240, 59),
                                                         fontSize: ui.font(
-                                                          11,
-                                                          compactValue: 9.5,
+                                                          14,
+                                                          compactValue: 12,
                                                         ),
                                                       ),
                                                     ),
@@ -345,9 +348,10 @@ class PauseMenuOverlay extends StatelessWidget {
                                                     child: Text(
                                                       '使用',
                                                       style: TextStyle(
+                                                        color: const Color.fromARGB(255, 216, 240, 59),
                                                         fontSize: ui.font(
-                                                          11,
-                                                          compactValue: 9.5,
+                                                          14,
+                                                          compactValue: 12,
                                                         ),
                                                       ),
                                                     ),
@@ -676,13 +680,8 @@ class _goldPill extends StatelessWidget {
         horizontal: ui.value(8, compactValue: 6),
         vertical: ui.value(4, compactValue: 3),
       ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E2F22),
-        borderRadius: BorderRadius.circular(ui.radius(8, compactValue: 6)),
-        border: Border.all(color: const Color(0x77D7B95C)),
-      ),
       child: Text(
-        '金幣 ${controller.gold}',
+        '\$ ${controller.gold}',
         style: TextStyle(
           color: const Color(0xFFFFE79A),
           fontSize: ui.font(20, compactValue: 16),
