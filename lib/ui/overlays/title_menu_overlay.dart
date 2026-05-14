@@ -43,15 +43,15 @@ class TitleMenuOverlay extends StatelessWidget {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: ui.compact ? size.width * 0.96 : 760,
-                      maxHeight: ui.compact ? size.height * 0.58 : size.height * 0.72,
+                      maxWidth: size.width,
+                      maxHeight: size.height * 0.8,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(height: ui.value(36, compactValue: 8)),
-                        SizedBox(
-                          height: ui.value(132, compactValue: 64),
+                        Expanded(
+                          flex: 3,
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               final titleScale = (constraints.maxWidth / (ui.compact ? 520 : 680)).clamp(0.52, 1.4);
@@ -92,105 +92,111 @@ class TitleMenuOverlay extends StatelessWidget {
                             },
                           ),
                         ),
-                        Spacer(),
-                        NesContainer(
-                          padding: ui.all(8, compactValue: 5),
-                          width: ui.compact ? size.width * 0.92 : 700,
-                          backgroundColor: Colors.transparent,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: NesButton(
-                                  type: NesButtonType.success,
-                                  onPressed: () async {
-                                    unawaited(AudioManager.instance.playActionSfx());
-                                    await enterLandscapeFullscreen();
-                                    game.startNewGame();
-                                  },
-                                  buttonWidth: double.infinity,
-                                  child: AutoSizeText(
-                                    '開始遊戲',
-                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          decoration: TextDecoration.none,
-                                          color: Colors.white,
-                                          fontSize: buttonFontSize,
-                                        ),
-                                    maxLines: 1,
-                                    minFontSize: 8,
+                        Expanded(
+                          child: NesContainer(
+                            padding: ui.all(8, compactValue: 5),
+                            width: ui.compact ? size.width * 0.92 : 700,
+                            height: MediaQuery.of(context).size.height * 0.6  ,
+                            backgroundColor: Colors.transparent,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: NesButton(
+                                    type: NesButtonType.success,
+                                    onPressed: () async {
+                                      unawaited(AudioManager.instance.playActionSfx());
+                                      await enterLandscapeFullscreen();
+                                      game.startNewGame();
+                                    },
+                                    buttonWidth: double.infinity,
+                                    child: AutoSizeText(
+                                      '開始遊戲',
+                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                            decoration: TextDecoration.none,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                      maxLines: 1,
+                                      minFontSize: 20,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: ui.value(8, compactValue: 4)),
-                              Expanded(
-                                child: NesButton(
-                                  type: NesButtonType.primary,
-                                  onPressed: () async {
-                                    unawaited(AudioManager.instance.playActionSfx());
-                                    await enterLandscapeFullscreen();
-                                    final loaded = await game.continueGame();
-                                    if (!context.mounted || loaded) {
-                                      return;
-                                    }
-                                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                                      const SnackBar(content: Text('目前沒有可繼續的進度。')),
-                                    );
-                                  },
-                                  buttonWidth: double.infinity,
-                                  child: AutoSizeText(
-                                    '繼續遊戲',
-                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          decoration: TextDecoration.none,
-                                          color: Colors.white,
-                                          fontSize: buttonFontSize,
-                                        ),
-                                    maxLines: 1,
-                                    minFontSize: 8,
+                                SizedBox(width: ui.value(8, compactValue: 4)),
+                                Expanded(
+                                  child: NesButton(
+                                    type: NesButtonType.primary,
+                                    onPressed: () async {
+                                      unawaited(AudioManager.instance.playActionSfx());
+                                      await enterLandscapeFullscreen();
+                                      final loaded = await game.continueGame();
+                                      if (!context.mounted || loaded) {
+                                        return;
+                                      }
+                                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                        const SnackBar(content: Text('目前沒有可繼續的進度。')),
+                                      );
+                                    },
+                                    buttonWidth: double.infinity,
+                                    child: AutoSizeText(
+                                      '繼續遊戲',
+                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                            decoration: TextDecoration.none,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                      maxLines: 1,
+                                      minFontSize: 20,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: ui.value(8, compactValue: 4)),
-                              Expanded(
-                                child: NesButton(
-                                  type: NesButtonType.warning,
-                                  onPressed: () {
-                                    unawaited(AudioManager.instance.playActionSfx());
-                                    game.overlays.add(OverlayIds.titleSettings);
-                                  },
-                                  buttonWidth: double.infinity,
-                                  child: AutoSizeText(
-                                    '設定',
-                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          decoration: TextDecoration.none,
-                                          color: Colors.white,
-                                          fontSize: buttonFontSize,
-                                        ),
-                                    maxLines: 1,
-                                    minFontSize: 8,
+                                SizedBox(width: ui.value(8, compactValue: 4)),
+                                Expanded(
+                                  child: NesButton(
+                                    type: NesButtonType.warning,
+                                    onPressed: () {
+                                      unawaited(AudioManager.instance.playActionSfx());
+                                      game.overlays.add(OverlayIds.titleSettings);
+                                    },
+                                    buttonWidth: double.infinity,
+                                    child: AutoSizeText(
+                                      '設定',
+                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                            decoration: TextDecoration.none,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                      maxLines: 1,
+                                      minFontSize: 20,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: ui.value(8, compactValue: 4)),
-                              Expanded(
-                                child: NesButton(
-                                  type: NesButtonType.error,
-                                  onPressed: () {
-                                    unawaited(AudioManager.instance.playActionSfx());
-                                    game.exitGame();
-                                  },
-                                  buttonWidth: double.infinity,
-                                  child: AutoSizeText(
-                                    '離開',
-                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          decoration: TextDecoration.none,
-                                          color: Colors.white,
-                                          fontSize: buttonFontSize,
-                                        ),
-                                    maxLines: 1,
-                                    minFontSize: 8,
+                                SizedBox(width: ui.value(8, compactValue: 4)),
+                                Expanded(
+                                  child: NesButton(
+                                    type: NesButtonType.error,
+                                    onPressed: () {
+                                      unawaited(AudioManager.instance.playActionSfx());
+                                      game.exitGame();
+                                    },
+                                    buttonWidth: double.infinity,
+                                    child: AutoSizeText(
+                                      '離開',
+                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                            decoration: TextDecoration.none,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                      maxLines: 1,
+                                      minFontSize: 20,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ],
