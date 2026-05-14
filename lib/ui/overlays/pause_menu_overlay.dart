@@ -361,289 +361,294 @@ class PauseMenuOverlay extends StatelessWidget {
                                           );
                                         },
                                       ),
-                                      SingleChildScrollView(
-                                        padding: EdgeInsets.only(
-                                          right: ui.value(2, compactValue: 0),
-                                        ),
-                                        child: DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            color: const Color(0x991C2434),
-                                            borderRadius: BorderRadius.circular(
-                                              ui.radius(18, compactValue: 14),
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.white12,
-                                            ),
+                                      Center(
+                                        child: SingleChildScrollView(
+                                          padding: EdgeInsets.only(
+                                            right: ui.value(2, compactValue: 0),
                                           ),
-                                          child: Padding(
-                                            padding: ui.all(
-                                              16,
-                                              compactValue: 12,
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '戰鬥資料',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleLarge
-                                                      ?.copyWith(
-                                                        color: Colors.white,
-                                                        fontSize: ui.compact
-                                                            ? 18
-                                                            : null,
-                                                      ),
-                                                ),
-                                                SizedBox(
-                                                  height: ui.value(
-                                                    12,
-                                                    compactValue: 8,
-                                                  ),
-                                                ),
-                                                _InfoLine(
-                                                  label: '等級',
-                                                  value:
-                                                      'Lv.${controller.level}',
-                                                  compact: ui.compact,
-                                                ),
-                                                _InfoLine(
-                                                  label: '經驗值',
-                                                  value:
-                                                      '${controller.experience}/${controller.nextLevelExperience}',
-                                                  compact: ui.compact,
-                                                ),
-                                                _InfoLine(
-                                                  label: 'HP',
-                                                  value:
-                                                      '${stats.hp}/${stats.maxHp}',
-                                                  compact: ui.compact,
-                                                ),
-                                                _InfoLine(
-                                                  label: 'MP',
-                                                  value:
-                                                      '${stats.mp}/${stats.maxMp}',
-                                                  compact: ui.compact,
-                                                ),
-                                                _InfoLine(
-                                                  label: '攻擊',
-                                                  value: '${stats.attack}',
-                                                  compact: ui.compact,
-                                                ),
-                                                _InfoLine(
-                                                  label: '防禦',
-                                                  value: '${stats.defense}',
-                                                  compact: ui.compact,
-                                                ),
-                                                SizedBox(
-                                                  height: ui.value(
-                                                    12,
-                                                    compactValue: 8,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '裝備',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        color: Colors.white,
-                                                        fontSize: ui.compact
-                                                            ? 15
-                                                            : null,
-                                                      ),
-                                                ),
-                                                SizedBox(
-                                                  height: ui.value(
-                                                    8,
-                                                    compactValue: 6,
-                                                  ),
-                                                ),
-                                                _InfoLine(
-                                                  label: '武器',
-                                                  value: equippedWeapon == null
-                                                      ? '-'
-                                                      : _equipmentLabel(
-                                                          equippedWeapon,
-                                                        ),
-                                                  compact: ui.compact,
-                                                ),
-                                                _InfoLine(
-                                                  label: '防具',
-                                                  value: equippedArmor == null
-                                                      ? '-'
-                                                      : _equipmentLabel(
-                                                          equippedArmor,
-                                                        ),
-                                                  compact: ui.compact,
-                                                ),
-                                                SizedBox(
-                                                  height: ui.value(
-                                                    12,
-                                                    compactValue: 8,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '提示',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        color: Colors.white,
-                                                        fontSize: ui.compact
-                                                            ? 15
-                                                            : null,
-                                                      ),
-                                                ),
-                                                SizedBox(
-                                                  height: ui.value(
-                                                    8,
-                                                    compactValue: 6,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '主動怪會在視野內追擊你，被動怪只有在接戰後才會反撲。用拉打維持血量。',
-                                                  style: TextStyle(
-                                                    color: Colors.white70,
-                                                    height: 1.5,
-                                                    fontSize: ui.font(
-                                                      14,
-                                                      compactValue: 11,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SingleChildScrollView(
-                                        padding: EdgeInsets.only(
-                                          right: ui.value(2, compactValue: 0),
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: SizedBox(
-                                                height:
-                                                    MediaQuery.of(
-                                                      context,
-                                                    ).size.height /
-                                                    2,
-                                                child: DecoratedBox(
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0x991C2434,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          ui.radius(
-                                                            14,
-                                                            compactValue: 12,
-                                                          ),
-                                                        ),
-                                                    border: Border.all(
-                                                      color: Colors.white12,
-                                                    ),
-                                                  ),
-                                                  child: Padding(
-                                                    padding: ui.all(
-                                                      12,
-                                                      compactValue: 10,
-                                                    ),
-                                                    child: Text(
-                                                      '快速提示\n• J 近戰、K 火球\n• 靠近怪物會有碰撞傷害\n• 受擊會震退，注意站位',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        height: 1.5,
-                                                        fontSize: ui.font(
-                                                          18,
-                                                          compactValue: 16,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: const Color(0x991C2434),
+                                              borderRadius: BorderRadius.circular(
+                                                ui.radius(18, compactValue: 14),
+                                              ),
+                                              border: Border.all(
+                                                color: Colors.white12,
                                               ),
                                             ),
-                                            Expanded(
+                                            child: Padding(
+                                              padding: ui.all(
+                                                16,
+                                                compactValue: 12,
+                                              ),
                                               child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  NesButton(
-                                                    buttonWidth: 80,
-                                                    onPressed: () async {
-                                                      unawaited(
-                                                        AudioManager.instance
-                                                            .playActionSfx(),
-                                                      );
-                                                      await game.saveGame();
-                                                    },
-                                                    type: NesButtonType.primary,
-                                                    child: Text(
-                                                      '存檔',
-                                                      style: TextStyle(
-                                                        fontSize: ui.font(
-                                                          18,
-                                                          compactValue: 14,
+                                                  Text(
+                                                    '戰鬥資料',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleLarge
+                                                        ?.copyWith(
+                                                          color: Colors.white,
+                                                          fontSize: ui.compact
+                                                              ? 18
+                                                              : null,
                                                         ),
-                                                      ),
+                                                  ),
+                                                  SizedBox(
+                                                    height: ui.value(
+                                                      12,
+                                                      compactValue: 8,
                                                     ),
                                                   ),
-                                                  NesButton(
-                                                    buttonWidth: 80,
-                                                    onPressed: () async {
-                                                      unawaited(
-                                                        AudioManager.instance
-                                                            .playActionSfx(),
-                                                      );
-                                                      await game.loadGame();
-                                                    },
-                                                    type: NesButtonType.primary,
-                                                    child: Text(
-                                                      '讀檔',
-                                                      style: TextStyle(
-                                                        fontSize: ui.font(
-                                                          18,
-                                                          compactValue: 14,
-                                                        ),
-                                                      ),
+                                                  _InfoLine(
+                                                    label: '等級',
+                                                    value:
+                                                        'Lv.${controller.level}',
+                                                    compact: ui.compact,
+                                                  ),
+                                                  _InfoLine(
+                                                    label: '經驗值',
+                                                    value:
+                                                        '${controller.experience}/${controller.nextLevelExperience}',
+                                                    compact: ui.compact,
+                                                  ),
+                                                  _InfoLine(
+                                                    label: 'HP',
+                                                    value:
+                                                        '${stats.hp}/${stats.maxHp}',
+                                                    compact: ui.compact,
+                                                  ),
+                                                  _InfoLine(
+                                                    label: 'MP',
+                                                    value:
+                                                        '${stats.mp}/${stats.maxMp}',
+                                                    compact: ui.compact,
+                                                  ),
+                                                  _InfoLine(
+                                                    label: '攻擊',
+                                                    value: '${stats.attack}',
+                                                    compact: ui.compact,
+                                                  ),
+                                                  _InfoLine(
+                                                    label: '防禦',
+                                                    value: '${stats.defense}',
+                                                    compact: ui.compact,
+                                                  ),
+                                                  SizedBox(
+                                                    height: ui.value(
+                                                      12,
+                                                      compactValue: 8,
                                                     ),
                                                   ),
-                                                  NesButton(
-                                                    buttonWidth: 80,
-                                                    onPressed: () {
-                                                      unawaited(
-                                                        AudioManager.instance
-                                                            .playActionSfx(),
-                                                      );
-                                                      controller
-                                                          .returnToTitleMenu();
-                                                    },
-                                                    type: NesButtonType.warning,
-                                                    child: Text(
-                                                      '回初始選單',
-                                                      style: TextStyle(
-                                                        fontSize: ui.font(
-                                                          18,
-                                                          compactValue: 14,
+                                                  Text(
+                                                    '裝備',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.copyWith(
+                                                          color: Colors.white,
+                                                          fontSize: ui.compact
+                                                              ? 15
+                                                              : null,
                                                         ),
+                                                  ),
+                                                  SizedBox(
+                                                    height: ui.value(
+                                                      8,
+                                                      compactValue: 6,
+                                                    ),
+                                                  ),
+                                                  _InfoLine(
+                                                    label: '武器',
+                                                    value: equippedWeapon == null
+                                                        ? '-'
+                                                        : _equipmentLabel(
+                                                            equippedWeapon,
+                                                          ),
+                                                    compact: ui.compact,
+                                                  ),
+                                                  _InfoLine(
+                                                    label: '防具',
+                                                    value: equippedArmor == null
+                                                        ? '-'
+                                                        : _equipmentLabel(
+                                                            equippedArmor,
+                                                          ),
+                                                    compact: ui.compact,
+                                                  ),
+                                                  SizedBox(
+                                                    height: ui.value(
+                                                      12,
+                                                      compactValue: 8,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '提示',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.copyWith(
+                                                          color: Colors.white,
+                                                          fontSize: ui.compact
+                                                              ? 15
+                                                              : null,
+                                                        ),
+                                                  ),
+                                                  SizedBox(
+                                                    height: ui.value(
+                                                      8,
+                                                      compactValue: 6,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '主動怪會在視野內追擊你，被動怪只有在接戰後才會反撲。用拉打維持血量。',
+                                                    style: TextStyle(
+                                                      color: Colors.white70,
+                                                      height: 1.5,
+                                                      fontSize: ui.font(
+                                                        14,
+                                                        compactValue: 11,
                                                       ),
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                            SizedBox(
-                                              height: ui.value(
-                                                16,
-                                                compactValue: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      Center(
+                                        child: SingleChildScrollView(
+                                          padding: EdgeInsets.only(
+                                            right: ui.value(2, compactValue: 0),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                flex: 3,
+                                                child: SizedBox(
+                                                  height:
+                                                      MediaQuery.of(
+                                                        context,
+                                                      ).size.height /
+                                                      2,
+                                                  child: DecoratedBox(
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0x991C2434,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            ui.radius(
+                                                              14,
+                                                              compactValue: 12,
+                                                            ),
+                                                          ),
+                                                      border: Border.all(
+                                                        color: Colors.white12,
+                                                      ),
+                                                    ),
+                                                    child: Padding(
+                                                      padding: ui.all(
+                                                        12,
+                                                        compactValue: 10,
+                                                      ),
+                                                      child: Text(
+                                                        '快速提示\n• J 近戰、K 火球\n• 靠近怪物會有碰撞傷害\n• 受擊會震退，注意站位',
+                                                        style: TextStyle(
+                                                          color: Colors.white70,
+                                                          height: 1.5,
+                                                          fontSize: ui.font(
+                                                            18,
+                                                            compactValue: 16,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                              Expanded(
+                                                child: Column(
+                                                  children: [
+                                                    NesButton(
+                                                      buttonWidth: 80,
+                                                      onPressed: () async {
+                                                        unawaited(
+                                                          AudioManager.instance
+                                                              .playActionSfx(),
+                                                        );
+                                                        await game.saveGame();
+                                                      },
+                                                      type: NesButtonType.primary,
+                                                      child: Text(
+                                                        '存檔',
+                                                        style: TextStyle(
+                                                          fontSize: ui.font(
+                                                            18,
+                                                            compactValue: 14,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    NesButton(
+                                                      buttonWidth: 80,
+                                                      onPressed: () async {
+                                                        unawaited(
+                                                          AudioManager.instance
+                                                              .playActionSfx(),
+                                                        );
+                                                        await game.loadGame();
+                                                      },
+                                                      type: NesButtonType.primary,
+                                                      child: Text(
+                                                        '讀檔',
+                                                        style: TextStyle(
+                                                          fontSize: ui.font(
+                                                            18,
+                                                            compactValue: 14,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    NesButton(
+                                                      buttonWidth: 80,
+                                                      onPressed: () {
+                                                        unawaited(
+                                                          AudioManager.instance
+                                                              .playActionSfx(),
+                                                        );
+                                                        controller
+                                                            .returnToTitleMenu();
+                                                      },
+                                                      type: NesButtonType.warning,
+                                                      child: Text(
+                                                        '回初始選單',
+                                                        style: TextStyle(
+                                                          fontSize: ui.font(
+                                                            18,
+                                                            compactValue: 14,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                height: ui.value(
+                                                  16,
+                                                  compactValue: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
