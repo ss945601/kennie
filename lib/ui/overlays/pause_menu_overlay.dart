@@ -268,8 +268,8 @@ class PauseMenuOverlay extends StatelessWidget {
                                               style: TextStyle(
                                                 color: highlightedColor,
                                                 fontSize: ui.font(
-                                                  14,
-                                                  compactValue: 12,
+                                                  18,
+                                                  compactValue: 16  ,
                                                 ),
                                               ),
                                             ),
@@ -280,8 +280,8 @@ class PauseMenuOverlay extends StatelessWidget {
                                               style: TextStyle(
                                                 color: Colors.white70,
                                                 fontSize: ui.font(
-                                                  12,
-                                                  compactValue: 10.5,
+                                                  14,
+                                                  compactValue: 12,
                                                 ),
                                               ),
                                             ),
@@ -293,8 +293,8 @@ class PauseMenuOverlay extends StatelessWidget {
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: ui.font(
-                                                      14,
-                                                      compactValue: 12,
+                                                      18,
+                                                      compactValue: 16,
                                                     ),
                                                   ),
                                                 ),
@@ -322,8 +322,8 @@ class PauseMenuOverlay extends StatelessWidget {
                                                       style: TextStyle(
                                                         color: const Color.fromARGB(255, 216, 240, 59),
                                                         fontSize: ui.font(
-                                                          14,
-                                                          compactValue: 12,
+                                                          18,
+                                                          compactValue: 16,
                                                         ),
                                                       ),
                                                     ),
@@ -350,8 +350,8 @@ class PauseMenuOverlay extends StatelessWidget {
                                                       style: TextStyle(
                                                         color: const Color.fromARGB(255, 216, 240, 59),
                                                         fontSize: ui.font(
-                                                          14,
-                                                          compactValue: 12,
+                                                          18,
+                                                          compactValue: 16,
                                                         ),
                                                       ),
                                                     ),
@@ -561,8 +561,8 @@ class PauseMenuOverlay extends StatelessWidget {
                                                         color: Colors.white70,
                                                         height: 1.5,
                                                         fontSize: ui.font(
-                                                          14,
-                                                          compactValue: 11,
+                                                          18,
+                                                          compactValue: 16,
                                                         ),
                                                       ),
                                                     ),
