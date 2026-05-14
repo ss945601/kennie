@@ -72,8 +72,8 @@ class PlayerFireballEffect extends PositionComponent {
     final nextPosition = position + delta;
     final nextRect = Rect.fromCenter(
       center: Offset(nextPosition.x, nextPosition.y),
-      width: size.x * 1.08,
-      height: size.y * 1.08,
+      width: size.x * 0.72,
+      height: size.y * 0.72,
     );
 
     if (!canTravelTo(nextRect)) {
