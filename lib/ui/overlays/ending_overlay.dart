@@ -34,7 +34,7 @@ class _EndingOverlayState extends State<EndingOverlay> {
   }
 
   void _startEndingTimer() {
-    _timer = Timer(const Duration(seconds: 4), _beginFadeOut);
+    _timer = Timer(const Duration(seconds: 20), _beginFadeOut);
   }
 
   void _beginFadeOut() {
