@@ -15,7 +15,10 @@ class AudioManager {
   _SfxBank? _fireballBank;
   double _menuVolume = 0.55;
   bool _menuBgmPlaying = false;
+  bool _fieldBgmPlaying = false;
   _FieldBgmTrack? _activeFieldTrack;
+  _FieldBgmTrack? _desiredFieldTrack;
+  Future<void> _fieldBgmTask = Future<void>.value();
 
   static const Duration _audioOpTimeout = Duration(seconds: 3);
 
@@ -144,36 +147,65 @@ class AudioManager {
 
   Future<void> playBossBgm() => _playFieldBgm(_FieldBgmTrack.boss);
 
-  Future<void> _playFieldBgm(_FieldBgmTrack track) async {
+  Future<void> _playFieldBgm(_FieldBgmTrack track) {
+    _desiredFieldTrack = track;
+    return _enqueueFieldBgmSync();
+  }
+
+  Future<void> _enqueueFieldBgmSync() {
+    _fieldBgmTask = _fieldBgmTask.then((_) => _syncFieldBgm()).catchError((_) {});
+    return _fieldBgmTask;
+  }
+
+  Future<void> _syncFieldBgm() async {
     await init();
     if (_fieldBgmPlayer == null) {
       return;
     }
-    if (_activeFieldTrack == track) {
-      return;
-    }
-    final source = switch (track) {
-      _FieldBgmTrack.game => 'bgm/game_bgm.mp3',
-      _FieldBgmTrack.boss => 'bgm/fight_boss.mp3',
-    };
-    try {
-      await _fieldBgmPlayer!.play(ap.AssetSource(source)).timeout(_audioOpTimeout);
-      _activeFieldTrack = track;
-    } catch (_) {
-      _activeFieldTrack = null;
+
+    while (true) {
+      final targetTrack = _desiredFieldTrack;
+      if (targetTrack == null) {
+        if (!_fieldBgmPlaying && _activeFieldTrack == null) {
+          return;
+        }
+        try {
+          await _fieldBgmPlayer!.stop().timeout(_audioOpTimeout);
+        } catch (_) {
+          // Ignore stop failures and still clear local state.
+        }
+        _fieldBgmPlaying = false;
+        _activeFieldTrack = null;
+      } else if (_activeFieldTrack == targetTrack && _fieldBgmPlaying) {
+        return;
+      } else {
+        final source = switch (targetTrack) {
+          _FieldBgmTrack.game => 'bgm/game_bgm.mp3',
+          _FieldBgmTrack.boss => 'bgm/fight_boss.mp3',
+        };
+        try {
+          if (_fieldBgmPlaying) {
+            await _fieldBgmPlayer!.stop().timeout(_audioOpTimeout);
+            _fieldBgmPlaying = false;
+          }
+          await _fieldBgmPlayer!.play(ap.AssetSource(source)).timeout(_audioOpTimeout);
+          _activeFieldTrack = targetTrack;
+          _fieldBgmPlaying = true;
+        } catch (_) {
+          _fieldBgmPlaying = false;
+          _activeFieldTrack = null;
+        }
+      }
+
+      if (identical(targetTrack, _desiredFieldTrack)) {
+        return;
+      }
     }
   }
 
-  Future<void> stopFieldBgm() async {
-    if (_fieldBgmPlayer == null || _activeFieldTrack == null) {
-      return;
-    }
-    try {
-      await _fieldBgmPlayer!.stop().timeout(_audioOpTimeout);
-      _activeFieldTrack = null;
-    } catch (_) {
-      _activeFieldTrack = null;
-    }
+  Future<void> stopFieldBgm() {
+    _desiredFieldTrack = null;
+    return _enqueueFieldBgmSync();
   }
 
   Future<void> stopMenuBgm() async {
@@ -206,7 +238,9 @@ class AudioManager {
 
   Future<void> dispose() async {
     _menuBgmPlaying = false;
+    _fieldBgmPlaying = false;
     _activeFieldTrack = null;
+    _desiredFieldTrack = null;
 
     try {
       await _menuPlayer?.dispose().timeout(_audioOpTimeout);
