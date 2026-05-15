@@ -1270,6 +1270,9 @@ class WorldMapManager extends Component {
         position: Vector2(npcDef.x, npcDef.y),
         size: Vector2(40, 48),
         onInteract: () async {
+          if (npcDef.id == 'sign') {
+            controller.setFlag('read_sign', true);
+          }
           controller.startDialog(_buildNpcDialog(npcDef.id));
         },
       );
@@ -1689,6 +1692,9 @@ class WorldMapManager extends Component {
           final flagKey = 'chest_${chestDef.id}_opened';
           if (controller.flag(flagKey)) {
             controller.setHudMessage('這個寶箱已經空了。');
+            return;
+          }
+          if (chestDef.requiredFlag case final req? when !controller.flag(req)) {
             return;
           }
           final rewardItemIds = <String>[

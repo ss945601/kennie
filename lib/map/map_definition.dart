@@ -79,6 +79,7 @@ class SceneChestDefinition {
     this.extraItemIds = const <String>[],
     this.showWhenFlag,
     this.hiddenWhenFlag,
+    this.requiredFlag,
     this.hiddenTrigger = false,
   });
 
@@ -90,6 +91,7 @@ class SceneChestDefinition {
   final List<String> extraItemIds;
   final String? showWhenFlag;
   final String? hiddenWhenFlag;
+  final String? requiredFlag;
   final bool hiddenTrigger;
 }
 
@@ -237,6 +239,7 @@ const mapDefinitions = <String, MapDefinition>{
         extraItemIds: ['zamazenta_armor'],
         x: 128,
         y: 344,
+        requiredFlag: 'read_sign',
         hiddenTrigger: true,
       ),
       SceneChestDefinition(
