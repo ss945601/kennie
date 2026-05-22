@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
@@ -269,6 +270,44 @@ class PlayerComponent extends PositionComponent {
       _maybeSpawnAfterimage(previousPosition);
     }
     _syncPriority();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    final stats = _game.controller.effectiveStats;
+    final hpFraction =
+        stats.maxHp <= 0 ? 0.0 : (stats.hp / stats.maxHp).clamp(0.0, 1.0);
+    final mpFraction =
+        stats.maxMp <= 0 ? 0.0 : (stats.mp / stats.maxMp).clamp(0.0, 1.0);
+
+    final barWidth = size.x - 6;
+    const barHeight = 3.0;
+    const barX = 3.0;
+    const hpBarY = -10.0;
+    const mpBarY = -5.0;
+
+    canvas.drawRect(
+      Rect.fromLTWH(barX, hpBarY, barWidth, barHeight),
+      Paint()..color = const Color(0xAA000000),
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(barX, mpBarY, barWidth, barHeight),
+      Paint()..color = const Color(0xAA000000),
+    );
+
+    if (hpFraction > 0) {
+      canvas.drawRect(
+        Rect.fromLTWH(barX, hpBarY, barWidth * hpFraction, barHeight),
+        Paint()..color = const Color(0xFFE25B5B),
+      );
+    }
+    if (mpFraction > 0) {
+      canvas.drawRect(
+        Rect.fromLTWH(barX, mpBarY, barWidth * mpFraction, barHeight),
+        Paint()..color = const Color(0xFF4E8FF0),
+      );
+    }
   }
 
   void snapTo(Vector2 targetPosition) {

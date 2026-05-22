@@ -156,6 +156,10 @@ class RpgGame extends BonfireWithCollision {
     controller.usePotionQuick();
   }
 
+  void handleQuickManaPotion() {
+    controller.useManaPotionQuick();
+  }
+
   void handlePauseToggle() {
     controller.togglePauseMenu();
   }

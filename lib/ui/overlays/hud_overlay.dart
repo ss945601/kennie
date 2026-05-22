@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
@@ -25,10 +26,24 @@ class HudOverlay extends StatelessWidget {
   }
 }
 
-class HudStatusOverlay extends StatelessWidget {
+class HudStatusOverlay extends StatefulWidget {
   const HudStatusOverlay({super.key, required this.game});
 
   final RpgGame game;
+
+  @override
+  State<HudStatusOverlay> createState() => _HudStatusOverlayState();
+}
+
+class _HudStatusOverlayState extends State<HudStatusOverlay> {
+  bool _collapsed = false;
+
+  void _toggleCollapsed() {
+    unawaited(AudioManager.instance.playActionSfx());
+    setState(() {
+      _collapsed = !_collapsed;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,19 +65,20 @@ class HudStatusOverlay extends StatelessWidget {
           final metaFontSize = ui.font(12, compactValue: 10);
           final panelGap = ui.value(12, compactValue: 8);
 
-          return IgnorePointer(
-            ignoring: true,
-            child: Padding(
-              padding: ui.all(12, compactValue: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Panel(
-                    compact: ui.compact,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
+          return Padding(
+            padding: ui.all(12, compactValue: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Panel(
+                  compact: ui.compact,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _toggleCollapsed,
+                        child: Container(
                           width: ui.value(78, compactValue: 64),
                           height: ui.value(78, compactValue: 64),
                           decoration: BoxDecoration(
@@ -79,6 +95,8 @@ class HudStatusOverlay extends StatelessWidget {
                             ),
                           ),
                         ),
+                      ),
+                      if (!_collapsed) ...[
                         SizedBox(width: ui.value(10, compactValue: 8)),
                         SizedBox(
                           width: MediaQuery.sizeOf(context).width * 0.33,
@@ -174,8 +192,11 @@ class HudStatusOverlay extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
+                      IconButton(onPressed: _toggleCollapsed, icon: !_collapsed ? Icon(Icons.arrow_left) : Icon(Icons.arrow_right) )
+                    ],
                   ),
+                ),
+                if (!_collapsed) ...[
                   SizedBox(height: panelGap),
                   _Panel(
                     compact: ui.compact,
@@ -204,7 +225,7 @@ class HudStatusOverlay extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
           );
         },
@@ -226,6 +247,9 @@ class HudControlsOverlay extends StatelessWidget {
           final ui = OverlayUiConfig.of(context, enableTouchHeuristics: true);
           final potionCount = controller.inventory
               .where((entry) => entry.itemId == 'potion')
+              .fold<int>(0, (total, entry) => total + entry.quantity);
+          final manaPotionCount = controller.inventory
+              .where((entry) => entry.itemId == 'mana_potion')
               .fold<int>(0, (total, entry) => total + entry.quantity);
           if (!ui.touchControls) {
             return const SizedBox.shrink();
@@ -273,24 +297,22 @@ class HudControlsOverlay extends StatelessWidget {
                               game.handleInteraction();
                             },
                     ),
+                    _buildPotionButtons(potionCount, ui, controller, manaPotionCount),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(width: ui.value(12, compactValue: 8)),
-                        _TouchActionButton(
-                          icon: Icons.gavel_rounded,
-                          label: '攻擊',
-                          accentColor: const Color(0xFFC24C32),
+                        _ArcAttackButton(
                           compact: ui.compact,
                           onPressed: controller.isFieldInputLocked
                               ? null
-                              : () => game.handleAttack(),
+                          : game.handleAttack,
                         ),
-                        SizedBox(width: ui.value(12, compactValue: 8)),
+                        SizedBox(width: ui.value(4, compactValue: 2)),
                         _RangedAimJoystick(
                           compact: ui.compact,
                           enabled: !controller.isFieldInputLocked,
                           label: '技能',
+                          sizeMultiplier: 1.2,
                           onCast: (direction) {
                             unawaited(game.handleFireball(direction: direction));
                           },
@@ -298,18 +320,6 @@ class HudControlsOverlay extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: ui.value(12, compactValue: 8)),
-                    _TouchActionButton(
-                      icon: Icons.auto_awesome,
-                      label: '藥水 x$potionCount',
-                      accentColor: const Color(0xFF3A7E61),
-                      compact: ui.compact,
-                      onPressed: controller.isFieldInputLocked
-                          ? null
-                          : () {
-                              unawaited(AudioManager.instance.playActionSfx());
-                              game.handleQuickPotion();
-                            },
-                    ),
                   ],
                 ),
               ),
@@ -319,6 +329,210 @@ class HudControlsOverlay extends StatelessWidget {
       ),
     );
   }
+
+  Row _buildPotionButtons(int potionCount, OverlayUiConfig ui, GameStateController controller, int manaPotionCount) {
+    return Row(
+                    children: [
+                      _TouchActionButton(
+                        iconAssetPath: 'assets/images/items/potion_life.png',
+                        label: 'x$potionCount',
+                        accentColor: const Color(0xFF3A7E61),
+                        compact: ui.compact,
+                        onPressed: controller.isFieldInputLocked
+                            ? null
+                            : () {
+                                unawaited(AudioManager.instance.playActionSfx());
+                                game.handleQuickPotion();
+                              },
+                      ),
+                      SizedBox(height: ui.value(10, compactValue: 6)),
+                      _TouchActionButton(
+                        iconAssetPath: 'assets/images/items/potion_mana.png',
+                        label: 'x$manaPotionCount',
+                        accentColor: const Color(0xFF2F5EA5),
+                        compact: ui.compact,
+                        onPressed: controller.isFieldInputLocked
+                            ? null
+                            : () {
+                                unawaited(
+                                  AudioManager.instance.playActionSfx(),
+                                );
+                                game.handleQuickManaPotion();
+                              },
+                      ),
+                    ],
+                  );
+  }
+}
+
+class _ArcAttackButton extends StatelessWidget {
+  const _ArcAttackButton({
+    required this.onPressed,
+    this.compact = false,
+  });
+
+  final VoidCallback? onPressed;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final size = compact ? 110.0 : 132.0;
+    final geometry = _ArcAttackGeometry.fromSize(Size.square(size));
+    final contentCenter = geometry.contentCenter;
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Stack(
+            children: [
+              CustomPaint(
+                size: Size.square(size),
+                painter: _ArcAttackButtonPainter(enabled: enabled),
+              ),
+              Positioned(
+                left: contentCenter.dx,
+                top: contentCenter.dy,
+                child: FractionalTranslation(
+                  translation: const Offset(-0.5, -0.5),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.gavel_rounded,
+                        color: Colors.white,
+                        size: compact ? 22 : 28,
+                      ),
+                      SizedBox(height: compact ? 1 : 3),
+                      Text(
+                        '攻擊',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: compact ? 10 : 12,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArcAttackButtonPainter extends CustomPainter {
+  const _ArcAttackButtonPainter({required this.enabled});
+
+  final bool enabled;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final geometry = _ArcAttackGeometry.fromSize(size);
+    final path = _buildPath(geometry);
+    final fill = Paint()
+      ..color = enabled
+          ? Colors.red
+          : Colors.red
+      ..style = PaintingStyle.fill;
+    final border = Paint()
+      ..color = enabled
+          ? Colors.white70
+          : Colors.white38
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    canvas.drawPath(path, fill);
+    canvas.drawPath(path, border);
+
+    final dividerPaint = Paint()
+      ..color = Colors.transparent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final middleAngle = geometry.middleAngle;
+    final p1 = Offset(
+      geometry.center.dx + math.cos(middleAngle) * geometry.innerRadius,
+      geometry.center.dy + math.sin(middleAngle) * geometry.innerRadius,
+    );
+    final p2 = Offset(
+      geometry.center.dx + math.cos(middleAngle) * geometry.outerRadius,
+      geometry.center.dy + math.sin(middleAngle) * geometry.outerRadius,
+    );
+    canvas.drawLine(p1, p2, dividerPaint);
+  }
+
+  Path _buildPath(_ArcAttackGeometry geometry) {
+    final outerRect = Rect.fromCircle(
+      center: geometry.center,
+      radius: geometry.outerRadius,
+    );
+    final innerRect = Rect.fromCircle(
+      center: geometry.center,
+      radius: geometry.innerRadius,
+    );
+
+    return Path()
+      ..arcTo(outerRect, geometry.startAngle, geometry.sweepAngle, false)
+      ..arcTo(
+        innerRect,
+        geometry.startAngle + geometry.sweepAngle,
+        -geometry.sweepAngle,
+        false,
+      )
+      ..close();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ArcAttackButtonPainter oldDelegate) {
+    return oldDelegate.enabled != enabled;
+  }
+}
+
+class _ArcAttackGeometry {
+  const _ArcAttackGeometry({
+    required this.center,
+    required this.outerRadius,
+    required this.innerRadius,
+    required this.startAngle,
+    required this.sweepAngle,
+  });
+
+  final Offset center;
+  final double outerRadius;
+  final double innerRadius;
+  final double startAngle;
+  final double sweepAngle;
+
+  factory _ArcAttackGeometry.fromSize(Size size) {
+    return _ArcAttackGeometry(
+      center: Offset(size.width, size.height * 0.52),
+      outerRadius: size.width * 0.6,
+      innerRadius: size.width * 0.15,
+      startAngle: 2.35,
+      sweepAngle: 1.42,
+    );
+  }
+
+  double get middleAngle => startAngle + sweepAngle * 0.5;
+
+  Offset get contentCenter {
+    final radius = innerRadius + (outerRadius - innerRadius) * 0.58;
+    return Offset(
+      center.dx + math.cos(middleAngle) * radius,
+      center.dy + math.sin(middleAngle) * radius,
+    );
+  }
 }
 
 class _RangedAimJoystick extends StatefulWidget {
@@ -326,12 +540,14 @@ class _RangedAimJoystick extends StatefulWidget {
     required this.enabled,
     required this.onCast,
     required this.label,
+    this.sizeMultiplier = 1,
     this.compact = false,
   });
 
   final bool enabled;
   final ValueChanged<Vector2> onCast;
   final String label;
+  final double sizeMultiplier;
   final bool compact;
 
   @override
@@ -343,9 +559,12 @@ class _RangedAimJoystickState extends State<_RangedAimJoystick> {
   bool _isAiming = false;
   int? _activePointer;
 
-  double get _baseSize => widget.compact ? 70 : 88;
-  double get _knobSize => widget.compact ? 26 : 32;
-  double get _travelRadius => widget.compact ? 18 : 23;
+  double get _baseSize =>
+    (widget.compact ? 70 : 88) * widget.sizeMultiplier;
+  double get _knobSize =>
+    (widget.compact ? 26 : 32) * widget.sizeMultiplier;
+  double get _travelRadius =>
+    (widget.compact ? 18 : 23) * widget.sizeMultiplier;
 
   Vector2 get _castDirection {
     if (_knobOffset == Offset.zero) {
@@ -528,14 +747,16 @@ class _Panel extends StatelessWidget {
 
 class _TouchActionButton extends StatelessWidget {
   const _TouchActionButton({
-    required this.icon,
+    this.icon,
+    this.iconAssetPath,
     required this.label,
     required this.onPressed,
     this.accentColor = const Color(0xCC111827),
     this.compact = false,
-  });
+  }) : assert(icon != null || iconAssetPath != null);
 
-  final IconData icon;
+  final IconData? icon;
+  final String? iconAssetPath;
   final String label;
   final VoidCallback? onPressed;
   final Color accentColor;
@@ -543,6 +764,7 @@ class _TouchActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = compact ? 16.0 : 22.0;
     return FilledButton.icon(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
@@ -558,8 +780,18 @@ class _TouchActionButton extends StatelessWidget {
           side: const BorderSide(color: Colors.white24),
         ),
       ),
-      icon: Icon(icon, size: compact ? 16 : 22),
-      label: Text(label, style: TextStyle(fontSize: compact ? 10 : 14)),
+      icon: iconAssetPath != null
+          ? Image.asset(
+              iconAssetPath!,
+              width: iconSize,
+              height: iconSize,
+              fit: BoxFit.contain,
+            )
+          : Icon(icon, size: iconSize),
+      label: Text(
+        label,
+        style: TextStyle(fontSize: compact ? 10 : 14),
+      ),
     );
   }
 }
