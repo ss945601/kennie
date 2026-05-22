@@ -282,6 +282,27 @@ class EnemyComponent extends PositionComponent {
     }
   }
 
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    if (_currentHp <= 0) return;
+    const barH = 3.0;
+    const barY = -7.0;
+    final barW = size.x - 4;
+    const barX = 2.0;
+    canvas.drawRect(
+      Rect.fromLTWH(barX, barY, barW, barH),
+      Paint()..color = const Color(0xAA000000),
+    );
+    final frac = (_maxHp > 0 ? _currentHp / _maxHp : 0.0).clamp(0.0, 1.0);
+    if (frac > 0) {
+      canvas.drawRect(
+        Rect.fromLTWH(barX, barY, barW * frac, barH),
+        Paint()..color = const Color(0xFFE25B5B),
+      );
+    }
+  }
+
   void applyKnockback(Vector2 direction, {double distance = 10}) {
     if (distance <= 0 || direction.length2 == 0) {
       return;

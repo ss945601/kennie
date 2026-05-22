@@ -3,7 +3,8 @@ abstract final class OverlayIds {
   static const opening = 'Opening';
   static const ending = 'Ending';
   static const titleSettings = 'TitleSettings';
-  static const hud = 'Hud';
+  static const hudStatus = 'HudStatus';
+  static const hudControls = 'HudControls';
   static const dialog = 'Dialog';
   static const chestReward = 'ChestReward';
   static const pauseMenu = 'PauseMenu';

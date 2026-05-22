@@ -9,20 +9,29 @@ import '../../game/rpg_game.dart';
 import '../responsive_overlay.dart';
 import '../../state/game_state_controller.dart';
 
-class HudOverlay extends StatefulWidget {
+class HudOverlay extends StatelessWidget {
   const HudOverlay({super.key, required this.game});
 
   final RpgGame game;
 
   @override
-  State<HudOverlay> createState() => _HudOverlayState();
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        HudStatusOverlay(game: game),
+        HudControlsOverlay(game: game),
+      ],
+    );
+  }
 }
 
-class _HudOverlayState extends State<HudOverlay> {
+class HudStatusOverlay extends StatelessWidget {
+  const HudStatusOverlay({super.key, required this.game});
+
+  final RpgGame game;
 
   @override
   Widget build(BuildContext context) {
-    final game = widget.game;
     return SafeArea(
       child: Consumer<GameStateController>(
         builder: (context, controller, _) {
@@ -41,262 +50,269 @@ class _HudOverlayState extends State<HudOverlay> {
           final metaFontSize = ui.font(12, compactValue: 10);
           final panelGap = ui.value(12, compactValue: 8);
 
-          return Stack(
-            children: [
-              IgnorePointer(
-                ignoring: true,
-                child: Padding(
-                  padding: ui.all(12, compactValue: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Panel(
-                        compact: ui.compact,
-                        child: Container(
-                          width: MediaQuery.sizeOf(context).width * 0.9,
-                          child: Row(
+          return IgnorePointer(
+            ignoring: true,
+            child: Padding(
+              padding: ui.all(12, compactValue: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Panel(
+                    compact: ui.compact,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: ui.value(78, compactValue: 64),
+                          height: ui.value(78, compactValue: 64),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white30,
+                              width: 1.6,
+                            ),
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/images/kennie.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: ui.value(10, compactValue: 8)),
+                        SizedBox(
+                          width: MediaQuery.sizeOf(context).width * 0.33,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: ui.value(78, compactValue: 64),
-                                height: ui.value(78, compactValue: 64),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white30,
-                                    width: 1.6,
-                                  ),
-                                ),
-                                child: ClipOval(
-                                  child: Image.asset(
-                                    'assets/images/kennie.png',
-                                    fit: BoxFit.cover,
-                                  ),
+                              Text(
+                                '${controller.playerName}  Lv.${controller.level}  ${controller.currentMapId.toUpperCase()}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: fontSize,
                                 ),
                               ),
-                              SizedBox(width: ui.value(10, compactValue: 8)),
-                              Expanded(
-                                flex: 6,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${controller.playerName}  Lv.${controller.level}  ${controller.currentMapId.toUpperCase()}',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: fontSize,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: ui.value(4, compactValue: 3),
-                                    ),
-                                    LinearProgressIndicator(
-                                      value: stats.maxHp == 0
-                                          ? 0
-                                          : stats.hp / stats.maxHp,
-                                      minHeight: ui.value(10, compactValue: 7),
-                                      backgroundColor: Colors.white12,
-                                      color: const Color(0xFFE25B5B),
-                                    ),
-                                    SizedBox(
-                                      height: ui.value(4, compactValue: 3),
-                                    ),
-                                    LinearProgressIndicator(
-                                      value: stats.maxMp == 0
-                                          ? 0
-                                          : stats.mp / stats.maxMp,
-                                      minHeight: ui.value(8, compactValue: 6),
-                                      backgroundColor: Colors.white10,
-                                      color: const Color(0xFF4E8FF0),
-                                    ),
-                                    SizedBox(
-                                      height: ui.value(4, compactValue: 3),
-                                    ),
-                                    LinearProgressIndicator(
-                                      value: expProgress,
-                                      minHeight: ui.value(8, compactValue: 6),
-                                      backgroundColor: Colors.white10,
-                                      color: const Color(0xFF7AE582),
-                                    ),
-                                    SizedBox(
-                                      height: ui.value(6, compactValue: 4),
-                                    ),
-                                    Wrap(
-                                      spacing: ui.value(12, compactValue: 8),
-                                      runSpacing: ui.value(4, compactValue: 2),
-                                      children: <Widget>[
-                                        Text(
-                                          'HP ${stats.hp}/${stats.maxHp}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                        Text(
-                                          'MP ${stats.mp}/${stats.maxMp}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                        Text(
-                                          'ATK ${stats.attack}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                        Text(
-                                          'DEF ${stats.defense}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                        Text(
-                                          '藥水 x$potionCount',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                        Text(
-                                          'EXP ${controller.experience}/${controller.nextLevelExperience}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                        Text(
-                                          '金幣 ${controller.gold}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: metaFontSize,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                              SizedBox(height: ui.value(4, compactValue: 3)),
+                              LinearProgressIndicator(
+                                value: stats.maxHp == 0 ? 0 : stats.hp / stats.maxHp,
+                                minHeight: ui.value(10, compactValue: 7),
+                                backgroundColor: Colors.white12,
+                                color: const Color(0xFFE25B5B),
                               ),
-                              Spacer()
+                              SizedBox(height: ui.value(4, compactValue: 3)),
+                              LinearProgressIndicator(
+                                value: stats.maxMp == 0 ? 0 : stats.mp / stats.maxMp,
+                                minHeight: ui.value(8, compactValue: 6),
+                                backgroundColor: Colors.white10,
+                                color: const Color(0xFF4E8FF0),
+                              ),
+                              SizedBox(height: ui.value(4, compactValue: 3)),
+                              LinearProgressIndicator(
+                                value: expProgress,
+                                minHeight: ui.value(8, compactValue: 6),
+                                backgroundColor: Colors.white10,
+                                color: const Color(0xFF7AE582),
+                              ),
+                              SizedBox(height: ui.value(6, compactValue: 4)),
+                              Wrap(
+                                spacing: ui.value(12, compactValue: 8),
+                                runSpacing: ui.value(4, compactValue: 2),
+                                children: <Widget>[
+                                  Text(
+                                    'HP ${stats.hp}/${stats.maxHp}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                  Text(
+                                    'MP ${stats.mp}/${stats.maxMp}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                  Text(
+                                    'ATK ${stats.attack}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                  Text(
+                                    'DEF ${stats.defense}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                  Text(
+                                    '藥水 x$potionCount',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                  Text(
+                                    'EXP ${controller.experience}/${controller.nextLevelExperience}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                  Text(
+                                    '金幣 ${controller.gold}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: metaFontSize,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                      SizedBox(height: panelGap),
-                      _Panel(
-                        compact: ui.compact,
-                        color: const Color(0xB2182438),
-                        child: Text(
-                          controller.hudMessage,
-                          style: TextStyle(
-                            color: Colors.yellowAccent,
-                            fontWeight: FontWeight.w600,
-                            fontSize: metaFontSize,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: ui.value(10, compactValue: 6)),
-                      _Panel(
-                        compact: ui.compact,
-                        color: const Color(0x99121820),
-                        child: Text(
-                          ui.touchControls
-                              ? '左下搖桿移動  按住右下火球搖桿瞄準，放開施放  右上暫停'
-                              : 'J/Enter 近戰  K/2 火球  H/1 藥水  Space 互動  Esc 選單',
-                          style: TextStyle(
-                            color: Colors.white54,
-                            fontSize: ui.font(12, compactValue: 9.5),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  SizedBox(height: panelGap),
+                  _Panel(
+                    compact: ui.compact,
+                    color: const Color(0xB2182438),
+                    child: Text(
+                      controller.hudMessage,
+                      style: TextStyle(
+                        color: Colors.yellowAccent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: metaFontSize,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: ui.value(10, compactValue: 6)),
+                  _Panel(
+                    compact: ui.compact,
+                    color: const Color(0x99121820),
+                    child: Text(
+                      ui.touchControls
+                          ? '左下搖桿移動  按住右下火球搖桿瞄準，放開施放  右上暫停'
+                          : 'J/Enter 近戰  K/2 火球  H/1 藥水  Space 互動  Esc 選單',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: ui.font(12, compactValue: 9.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class HudControlsOverlay extends StatelessWidget {
+  const HudControlsOverlay({super.key, required this.game});
+
+  final RpgGame game;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Consumer<GameStateController>(
+        builder: (context, controller, _) {
+          final ui = OverlayUiConfig.of(context, enableTouchHeuristics: true);
+          final potionCount = controller.inventory
+              .where((entry) => entry.itemId == 'potion')
+              .fold<int>(0, (total, entry) => total + entry.quantity);
+          if (!ui.touchControls) {
+            return const SizedBox.shrink();
+          }
+
+          return Stack(
+            children: [
+              Positioned(
+                right: ui.value(16, compactValue: 12),
+                top: ui.value(12, compactValue: 8),
+                child: _TouchActionButton(
+                  icon: Icons.pause_rounded,
+                  label: '選單',
+                  compact: ui.compact,
+                  onPressed: () {
+                    unawaited(AudioManager.instance.playActionSfx());
+                    game.handlePauseToggle();
+                  },
                 ),
               ),
-              if (ui.touchControls) ...[
-                Positioned(
-                  right: ui.value(32, compactValue: 16),
-                  top: ui.value(32, compactValue: 16),
-                  child: _TouchActionButton(
-                    icon: Icons.pause_rounded,
-                    label: '選單',
-                    compact: ui.compact,
-                    onPressed: () {
-                      unawaited(AudioManager.instance.playActionSfx());
-                      game.handlePauseToggle();
-                    },
-                  ),
+              Positioned(
+                left: ui.value(16, compactValue: 8),
+                bottom: ui.value(20, compactValue: 8),
+                child: _VirtualJoystick(
+                  onChanged: game.updateTouchMovement,
+                  onEnd: game.stopTouchMovement,
+                  enabled: !controller.isFieldInputLocked,
+                  compact: ui.compact,
                 ),
-                Positioned(
-                  left: ui.value(16, compactValue: 8),
-                  bottom: ui.value(20, compactValue: 8),
-                  child: _VirtualJoystick(
-                    onChanged: game.updateTouchMovement,
-                    onEnd: game.stopTouchMovement,
-                    enabled: !controller.isFieldInputLocked,
-                    compact: ui.compact,
-                  ),
-                ),
-                Positioned(
-                  right: ui.value(16, compactValue: 8),
-                  bottom: ui.value(20, compactValue: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                                                _TouchActionButton(
-                            icon: Icons.back_hand_rounded,
-                            label: '互動',
-                            compact: ui.compact,
-                            onPressed: controller.isFieldInputLocked
-                                ? null
-                                : () {
-                                    unawaited(AudioManager.instance.playActionSfx());
-                                    game.handleInteraction();
-                                  },
-                          ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(width: ui.value(12, compactValue: 8)),
-                          _TouchActionButton(
-                            icon: Icons.gavel_rounded,
-                            label: '攻擊',
-                            accentColor: const Color(0xFFC24C32),
-                            compact: ui.compact,
-                            onPressed: controller.isFieldInputLocked
-                                ? null
-                                : () => game.handleAttack(),
-                          ),
-                          SizedBox(width: ui.value(12, compactValue: 8)),
-                          _RangedAimJoystick(
-                            compact: ui.compact,
-                            enabled: !controller.isFieldInputLocked,
-                            label: '技能',
-                            onCast: (direction) {
-                              unawaited(game.handleFireball(direction: direction));
+              ),
+              Positioned(
+                right: ui.value(25, compactValue: 16),
+                bottom: ui.value(25, compactValue: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _TouchActionButton(
+                      icon: Icons.back_hand_rounded,
+                      label: '互動',
+                      compact: ui.compact,
+                      onPressed: controller.isFieldInputLocked
+                          ? null
+                          : () {
+                              unawaited(AudioManager.instance.playActionSfx());
+                              game.handleInteraction();
                             },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: ui.value(12, compactValue: 8)),
-                      _TouchActionButton(
-                        icon: Icons.auto_awesome,
-                        label: '藥水 x$potionCount',
-                        accentColor: const Color(0xFF3A7E61),
-                        compact: ui.compact,
-                        onPressed: controller.isFieldInputLocked
-                            ? null
-                            : () {
-                                unawaited(AudioManager.instance.playActionSfx());
-                                game.handleQuickPotion();
-                              },
-                      ),
-                    ],
-                  ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: ui.value(12, compactValue: 8)),
+                        _TouchActionButton(
+                          icon: Icons.gavel_rounded,
+                          label: '攻擊',
+                          accentColor: const Color(0xFFC24C32),
+                          compact: ui.compact,
+                          onPressed: controller.isFieldInputLocked
+                              ? null
+                              : () => game.handleAttack(),
+                        ),
+                        SizedBox(width: ui.value(12, compactValue: 8)),
+                        _RangedAimJoystick(
+                          compact: ui.compact,
+                          enabled: !controller.isFieldInputLocked,
+                          label: '技能',
+                          onCast: (direction) {
+                            unawaited(game.handleFireball(direction: direction));
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: ui.value(12, compactValue: 8)),
+                    _TouchActionButton(
+                      icon: Icons.auto_awesome,
+                      label: '藥水 x$potionCount',
+                      accentColor: const Color(0xFF3A7E61),
+                      compact: ui.compact,
+                      onPressed: controller.isFieldInputLocked
+                          ? null
+                          : () {
+                              unawaited(AudioManager.instance.playActionSfx());
+                              game.handleQuickPotion();
+                            },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ],
           );
         },
