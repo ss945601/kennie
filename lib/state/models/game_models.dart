@@ -215,7 +215,7 @@ const Map<String, EnemyDefinition> enemyCatalog = {
   'elder_demon_lord': EnemyDefinition(
     id: 'elder_demon_lord',
     name: '大魔王',
-    maxHp: 400,
+    maxHp: 330,
     attack: 15,
     defense: 25,
     moveSpeed: 80,
