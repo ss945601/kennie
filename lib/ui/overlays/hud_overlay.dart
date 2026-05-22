@@ -234,7 +234,7 @@ class HudControlsOverlay extends StatelessWidget {
           return Stack(
             children: [
               Positioned(
-                right: ui.value(16, compactValue: 12),
+                right: ui.value(64, compactValue: 48),
                 top: ui.value(12, compactValue: 8),
                 child: _TouchActionButton(
                   icon: Icons.pause_rounded,
@@ -257,7 +257,7 @@ class HudControlsOverlay extends StatelessWidget {
                 ),
               ),
               Positioned(
-                right: ui.value(25, compactValue: 16),
+                right: ui.value(64, compactValue: 48),
                 bottom: ui.value(25, compactValue: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
