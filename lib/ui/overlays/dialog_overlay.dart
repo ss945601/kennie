@@ -97,13 +97,26 @@ class _DialogTextCard extends StatefulWidget {
 
 class _DialogTextCardState extends State<_DialogTextCard> {
   bool _completed = false;
+  DateTime? _completedAt;
 
   @override
   void didUpdateWidget(covariant _DialogTextCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.session.currentNodeId != widget.session.currentNodeId) {
       _completed = false;
+      _completedAt = null;
     }
+  }
+
+  void _handleAdvance() {
+    final completedAt = _completedAt;
+    if (completedAt != null &&
+        DateTime.now().difference(completedAt) <
+            const Duration(milliseconds: 420)) {
+      return;
+    }
+    unawaited(AudioManager.instance.playActionSfx());
+    widget.onAdvance();
   }
 
   @override
@@ -111,71 +124,69 @@ class _DialogTextCardState extends State<_DialogTextCard> {
     final node = widget.session.currentNode;
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          if (_completed && node.choices.isEmpty) {
-            widget.onAdvance();
-          }
-        },
-        borderRadius: BorderRadius.circular(widget.compact ? 10 : 16),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: const Color(0xEE101B2F),
-            borderRadius: BorderRadius.circular(widget.compact ? 10 : 16),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(widget.compact ? 10 : 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  node.speaker,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.amberAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: widget.compact ? 14 : null,
-                      ),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: const Color(0xEE101B2F),
+          borderRadius: BorderRadius.circular(widget.compact ? 10 : 16),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(widget.compact ? 10 : 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                node.speaker,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.amberAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: widget.compact ? 14 : null,
+                    ),
+              ),
+              SizedBox(height: widget.compact ? 5 : 8),
+              TypewriterText(
+                text: node.text,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.white,
+                      fontSize: widget.compact ? 12 : null,
+                    ),
+                onCompleted: () => setState(() {
+                  _completed = true;
+                  _completedAt = DateTime.now();
+                }),
+              ),
+              if (_completed && node.choices.isNotEmpty) ...[
+                SizedBox(height: widget.compact ? 8 : 16),
+                Wrap(
+                  spacing: widget.compact ? 5 : 8,
+                  runSpacing: widget.compact ? 5 : 8,
+                  children: node.choices
+                      .map(
+                        (choice) => FilledButton.tonal(
+                          onPressed: () {
+                            unawaited(AudioManager.instance.playActionSfx());
+                            widget.onChoiceSelected(choice);
+                          },
+                          child: Text(choice.label, style: TextStyle(fontSize: widget.compact ? 11 : 14)),
+                        ),
+                      )
+                      .toList(),
                 ),
-                SizedBox(height: widget.compact ? 5 : 8),
-                TypewriterText(
-                  text: node.text,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white,
-                        fontSize: widget.compact ? 12 : null,
-                      ),
-                  onCompleted: () => setState(() => _completed = true),
-                ),
-                if (_completed && node.choices.isNotEmpty) ...[
-                  SizedBox(height: widget.compact ? 8 : 16),
-                  Wrap(
-                    spacing: widget.compact ? 5 : 8,
-                    runSpacing: widget.compact ? 5 : 8,
-                    children: node.choices
-                        .map(
-                          (choice) => FilledButton.tonal(
-                            onPressed: () {
-                              unawaited(AudioManager.instance.playActionSfx());
-                              widget.onChoiceSelected(choice);
-                            },
-                            child: Text(choice.label, style: TextStyle(fontSize: widget.compact ? 11 : 14)),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ] else if (_completed) ...[
-                  SizedBox(height: widget.compact ? 6 : 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
+              ] else if (_completed) ...[
+                SizedBox(height: widget.compact ? 6 : 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _handleAdvance,
+                    label: Text(
                       '點擊繼續',
-                      style: TextStyle(color: Colors.white54, fontSize: widget.compact ? 10 : 14),
+                      style: TextStyle(fontSize: widget.compact ? 11 : 14),
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
